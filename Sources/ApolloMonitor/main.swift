@@ -30,6 +30,15 @@ final class App: NSObject, NSApplicationDelegate {
 
     /// Last level the overlay showed, so it only appears when the level moves.
     private var lastShownDb: Double?
+    /// Coalesced UI work. Redrawing runs on the next main-queue turn rather than
+    /// inside the event-tap callback, so the keystroke is never waiting on drawing.
+    private var pendingState: MonitorState?
+    private var uiRefreshScheduled = false
+    /// What the menu-bar icon was last drawn from, to skip identical redraws.
+    private var lastIconKey: String?
+    /// Cadence tracking for hold acceleration.
+    private var lastPressAt: Date?
+    private var consecutiveRepeats = 0
     /// Dragging the menu slider is its own feedback; an overlay on top of the open
     /// menu would just be in the way.
     private var hudSuppressedUntil = Date.distantPast
@@ -53,12 +62,7 @@ final class App: NSObject, NSApplicationDelegate {
         )
         status.start()
 
-        engine.onChange = { [weak self] state in
-            guard let self else { return }
-            self.refreshIcon()
-            self.sliderView?.apply(tapered: state.tapered, db: state.db, isLive: state.isLive)
-            self.showHUDIfLevelMoved(state)
-        }
+        engine.onChange = { [weak self] state in self?.scheduleUIRefresh(state) }
         engine.start()
 
         // The machine's own volume keys, not a chord: macOS cannot control the
@@ -135,8 +139,44 @@ final class App: NSObject, NSApplicationDelegate {
         }
 
         guard output.isUniversalAudio, engine.state.isLive else { return false }
-        engine.stepDb(direction)
+
+        // Everything here is on the event-tap callback, which the system will
+        // disable if it dawdles, and which delays the keystroke itself. So this
+        // does only arithmetic and a socket write; drawing happens afterwards.
+        let now = Date()
+        consecutiveRepeats =
+            StepAcceleration.isContinuedHold(previous: lastPressAt, now: now)
+            ? consecutiveRepeats + 1
+            : 0
+        lastPressAt = now
+
+        engine.stepDb(direction, step: StepAcceleration.step(consecutiveRepeats: consecutiveRepeats))
         return true
+    }
+
+    // MARK: - Coalesced UI
+
+    /// State changes arrive in bursts — the optimistic write, then the engine's dB
+    /// echo, then its coarser tapered echo — and each one used to trigger a full
+    /// redraw from inside the tap callback. Collapsing them into one pass on the
+    /// next main-queue turn keeps the keystroke off the drawing path.
+    private func scheduleUIRefresh(_ state: MonitorState) {
+        pendingState = state
+        guard !uiRefreshScheduled else { return }
+        uiRefreshScheduled = true
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.uiRefreshScheduled = false
+            guard let state = self.pendingState else { return }
+            self.pendingState = nil
+
+            self.refreshIcon()
+            self.sliderView?.apply(
+                tapered: state.tapered, db: state.db, isLive: state.isLive
+            )
+            self.showHUDIfLevelMoved(state)
+        }
     }
 
     /// The overlay follows the level itself rather than the keypress, so turning the
@@ -159,6 +199,13 @@ final class App: NSObject, NSApplicationDelegate {
         let state = engine.state
         let fraction = CGFloat(state.tapered)
         let live = state.isLive && !state.muted && tap?.isRunning == true
+
+        // The gauge is 18 points across, so changes finer than this cannot show.
+        // Skipping identical redraws matters during a held key, when the level
+        // changes several times a second.
+        let key = "\(Int((state.tapered * 200).rounded()))|\(live)"
+        guard key != lastIconKey else { return }
+        lastIconKey = key
 
         let icon: NSImage
         if live {

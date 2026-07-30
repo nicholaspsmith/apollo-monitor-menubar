@@ -108,7 +108,7 @@ app after every build.
 
 | | |
 |---|---|
-| **Volume up / down keys** | Monitor level ±1 dB per press, held keys ramp |
+| **Volume up / down keys** | Monitor level ±1 dB per press; a held key accelerates |
 | Click the icon | Menu with the slider, Mute, Dim |
 | `ApolloMonitor --step up\|down` | Adjust once and exit — needs no Accessibility |
 
@@ -141,6 +141,24 @@ cannot reliably ask whether its own window is on screen —
 `CGWindowListCopyWindowInfo` answers differently for the caller — so the window is
 replaced across those transitions instead of repaired on detection. Rebuilding is
 sub-millisecond and never happens during a run of key presses.
+
+### Responsiveness
+
+The event-tap callback does arithmetic and a socket write, nothing else. Drawing is
+deferred to the next main-queue turn, so a keystroke never waits on a redraw — and
+the tap cannot be disabled by the system for dawdling. The burst of state changes a
+single press produces (the optimistic write, the engine's dB echo, its coarser
+tapered echo) collapses into one UI pass instead of three.
+
+The dB readout moves the instant a key is pressed; the slider's position waits for
+the engine's echo, ~8 ms, because only the engine knows which of its 55 knob
+positions the level landed on. Measured end to end, the app's own processing went
+from a 68 ms median to 37 ms, with a floor of 1–7 ms.
+
+A held key accelerates: 1 dB for the first few repeats, then 2, then 3. macOS
+delivers media-key repeats about every 150 ms, so a flat 1 dB made crossing a useful
+range take several seconds of holding; this crosses −60 → 0 dB in about two seconds
+while a single press still moves exactly 1 dB.
 
 ### Pass-through
 

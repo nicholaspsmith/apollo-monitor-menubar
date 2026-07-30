@@ -241,6 +241,24 @@ slider drag  → KnobPosition.percent(atX:…)        // 26%
 External knob and Console fader moves enter at the push step and follow the
 identical path, so there is exactly one source of truth.
 
+## Responsiveness
+
+The engine echoes a write in ~8 ms (measured, n=12, median 8.2 ms), so wire latency
+was never the problem. The app was adding 60 ms of its own: `handle(token:)` runs on
+the event-tap callback, and every redraw — menu-bar icon, overlay symbol, overlay
+animation — happened synchronously before the tap returned.
+
+- The tap callback now does arithmetic and a socket write only.
+- UI work is coalesced onto the next main-queue turn, so the three state changes a
+  press produces (optimistic write, dB echo, tapered echo) drive one pass, not three.
+- The menu-bar icon skips redraws that would be identical at gauge resolution.
+- The overlay caches its four symbol images and skips re-ordering and re-animating
+  while it is already up, which is the whole of a held key.
+- A held key accelerates via `StepAcceleration`: 1 dB for the first five repeats,
+  then 2, then 3.
+
+Measured app-side latency fell from a 68 ms median (47–102) to 37 ms (1–62).
+
 ## Error handling
 
 | Condition | Behaviour |

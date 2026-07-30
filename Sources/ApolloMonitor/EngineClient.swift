@@ -320,9 +320,10 @@ final class EngineClient {
         ))
     }
 
-    /// One whole-dB step — what a volume key press does.
-    func stepDb(_ direction: StepDirection) {
-        setDb(LevelDb.next(db: state.db, direction))
+    /// One step of `step` dB — what a volume key press does. Held keys pass a
+    /// larger step (see `StepAcceleration`).
+    func stepDb(_ direction: StepDirection, step: Double = LevelDb.defaultStep) {
+        setDb(LevelDb.next(db: state.db, direction, step: step))
     }
 
     func setMuted(_ muted: Bool) {

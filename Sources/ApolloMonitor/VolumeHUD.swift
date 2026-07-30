@@ -46,6 +46,9 @@ final class VolumeHUD {
 
     /// When the overlay was last needed, for the idle rule in `OverlayRefresh`.
     private var lastShownAt = Date()
+    /// Symbol rendering is not free, and a held key redraws this several times a
+    /// second for one of only four images.
+    private var symbolCache: [String: NSImage] = [:]
 
     init() {
         // Subviews are built once and reparented into each panel, so a rebuild
@@ -177,9 +180,7 @@ final class VolumeHUD {
         fill.frame = NSRect(
             x: 0, y: 0, width: track.frame.width * clamped, height: Layout.barHeight
         )
-        icon.image = NSImage(
-            systemSymbolName: symbolName(for: clamped), accessibilityDescription: "Volume"
-        )
+        icon.image = symbol(named: symbolName(for: clamped))
 
         present()
 
@@ -192,13 +193,25 @@ final class VolumeHUD {
     }
 
     private func present() {
-        reposition()
-        panel.orderFrontRegardless()
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.12
-            panel.animator().alphaValue = 1
+        // While the overlay is already up — which is the whole of a held key — the
+        // labels have been updated in place and there is nothing else to do.
+        // Re-ordering and re-animating every repeat is pure cost.
+        if !(panel.isVisible && panel.alphaValue == 1) {
+            reposition()
+            panel.orderFrontRegardless()
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.12
+                panel.animator().alphaValue = 1
+            }
         }
         log.notice("HUD \(self.valueLabel.stringValue, privacy: .public) at \(NSStringFromRect(self.panel.frame), privacy: .public)")
+    }
+
+    private func symbol(named name: String) -> NSImage? {
+        if let cached = symbolCache[name] { return cached }
+        let image = NSImage(systemSymbolName: name, accessibilityDescription: "Volume")
+        symbolCache[name] = image
+        return image
     }
 
     private func hide() {
