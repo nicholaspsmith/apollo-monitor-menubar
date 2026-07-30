@@ -15,14 +15,15 @@ final class App: NSObject, NSApplicationDelegate {
         static let down = "monitor.down"
     }
 
-    /// Arrow keycodes (`kVK_UpArrow` / `kVK_DownArrow`).
-    private enum KeyCode {
-        static let up: CGKeyCode = 126
-        static let down: CGKeyCode = 125
+    /// NX media-key codes, from `IOKit/hidsystem/ev_keymap.h`.
+    private enum MediaKey {
+        static let soundUp: Int32 = 0    // NX_KEYTYPE_SOUND_UP
+        static let soundDown: Int32 = 1  // NX_KEYTYPE_SOUND_DOWN
     }
 
     private var status: StatusItemController!
     private let engine = EngineClient()
+    private let output = DefaultOutputWatcher()
     private var tap: HotkeyTap!
     private var trustTimer: Timer?
 
@@ -35,6 +36,10 @@ final class App: NSObject, NSApplicationDelegate {
             pollInterval: 5,
             onPoll: { [weak self] in
                 self?.reassertTap()
+                // Belt and braces: the property listener normally keeps this
+                // current, but a stale answer here means the volume keys go to
+                // the wrong device.
+                self?.output.refresh()
                 self?.refreshIcon()
             },
             onBuildMenu: { [weak self] menu in self?.buildMenu(menu) }
@@ -48,10 +53,19 @@ final class App: NSObject, NSApplicationDelegate {
         }
         engine.start()
 
+        // The machine's own volume keys, not a chord: macOS cannot control the
+        // Apollo's level (it has no Core Audio volume), so pressing them today
+        // only raises a HUD with a greyed-out slider. Taking them over is both the
+        // obvious gesture and free of the conflicts a chord like ⌘⌥↑ runs into.
+        //
+        // Bound with and without `.fn` because some keyboards report the function
+        // layer's modifier on media keys and `Binding.matches` is exact.
         tap = HotkeyTap(
             bindings: [
-                Binding(token: Token.up, trigger: .key(KeyCode.up, [.command, .option])),
-                Binding(token: Token.down, trigger: .key(KeyCode.down, [.command, .option])),
+                Binding(token: Token.up, trigger: .mediaKey(MediaKey.soundUp, [])),
+                Binding(token: Token.up, trigger: .mediaKey(MediaKey.soundUp, [.fn])),
+                Binding(token: Token.down, trigger: .mediaKey(MediaKey.soundDown, [])),
+                Binding(token: Token.down, trigger: .mediaKey(MediaKey.soundDown, [.fn])),
             ],
             onMatch: { [weak self] token in self?.handle(token: token) ?? false }
         )
@@ -97,14 +111,23 @@ final class App: NSObject, NSApplicationDelegate {
 
     // MARK: - Action
 
-    /// Returns true to swallow the key, so ⌘⌥↑/↓ never also reach the focused
-    /// app. Unhandled tokens pass through.
+    /// Returns true to swallow the volume key so macOS never also acts on it —
+    /// which is what suppresses the useless greyed-out volume HUD.
+    ///
+    /// Passing the key through is the important branch: unless the Apollo is both
+    /// the current output device and reachable, the key has to keep working the way
+    /// it always did, or switching to the built-in speakers would leave them with
+    /// no volume keys at all.
     private func handle(token: String) -> Bool {
+        let direction: StepDirection
         switch token {
-        case Token.up: engine.step(.up)
-        case Token.down: engine.step(.down)
+        case Token.up: direction = .up
+        case Token.down: direction = .down
         default: return false
         }
+
+        guard output.isUniversalAudio, engine.state.isLive else { return false }
+        engine.step(direction)
         return true
     }
 
@@ -157,6 +180,11 @@ final class App: NSObject, NSApplicationDelegate {
         if !(tap?.isTrusted ?? false) {
             menu.addItem(.separator())
             menu.addItem(actionItem("⚠ Grant Accessibility…", #selector(grantTrust)))
+        } else if !output.isUniversalAudio {
+            // Otherwise "my volume keys stopped controlling the Apollo" is a
+            // mystery with no visible cause.
+            menu.addItem(.separator())
+            menu.addItem(disabledItem("Volume keys: system output isn't the Apollo"))
         }
 
         menu.addItem(.separator())

@@ -1,7 +1,8 @@
 # Apollo Monitor
 
 A macOS menu-bar control for the **monitor output level of a Universal Audio
-Apollo**, with a horizontal slider, connection status, and ⌘⌥↑ / ⌘⌥↓ hotkeys.
+Apollo**: a horizontal slider, connection status, and the Mac's **volume keys**
+remapped to drive it.
 
 Built on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) and
 [HotkeyKit](https://github.com/nicholaspsmith/HotkeyKit).
@@ -94,16 +95,31 @@ app after every build.
 
 | | |
 |---|---|
-| ⌘⌥↑ / ⌘⌥↓ | Monitor level up / down, 5% per press, held keys ramp |
+| **Volume up / down keys** | Monitor level up / down, 5% per press, held keys ramp |
 | Click the icon | Menu with the slider, Mute, Dim |
 | `ApolloMonitor --step up\|down` | Adjust once and exit — needs no Accessibility |
 
-The hotkeys use a `CGEventTap` and so need **Accessibility** permission; the menu
-and slider do not. The keys are swallowed, so they shadow any app-specific
-⌘⌥↑/↓ binding while this is running.
+### The volume keys
 
-`--step` is the escape hatch if you would rather not grant Accessibility: bind it
-from Shortcuts, Karabiner, or anything else that can run a command.
+The Mac's own volume keys are taken over rather than some chord. On an Apollo they
+otherwise do nothing useful: because the device has no Core Audio volume, pressing
+them just raises the system HUD with a **greyed-out slider you cannot move**.
+Swallowing the key suppresses that HUD too, so the only feedback is the menu-bar
+gauge (which is live).
+
+They are only intercepted while the Apollo is **the current default output
+device**. Switch to the built-in speakers or a USB interface and the keys go
+straight back to their normal behaviour, because those devices have their own
+volume and macOS handles them properly. The menu says so when it is passing them
+through. They also pass through whenever the engine is unreachable, so the keys
+are never dead.
+
+Bound to `NX_KEYTYPE_SOUND_UP` / `_DOWN` (0 and 1), with and without the `fn`
+modifier, since some keyboards report the function layer on media keys.
+
+This needs **Accessibility** permission (it is a `CGEventTap`); the menu and
+slider do not. `--step` is the escape hatch if you would rather not grant it:
+bind it from Shortcuts, Karabiner, or anything else that can run a command.
 
 ## Requirements
 

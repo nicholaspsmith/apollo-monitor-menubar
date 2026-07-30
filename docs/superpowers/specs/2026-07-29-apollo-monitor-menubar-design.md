@@ -88,7 +88,10 @@ this device reports.
 - Menu-bar icon showing monitor level, greyed when the Apollo is unreachable.
 - Dropdown (real `NSMenu`) containing a status row, a **horizontal slider**,
   Mute, Dim, Start at Login, Quit.
-- Global hotkeys **⌘⌥↑ / ⌘⌥↓**, 20 even increments across 0–100%.
+- The Mac's **volume up/down keys** remapped to the monitor level, 20 even
+  increments across 0–100%. (⌘⌥↑/↓ was the first attempt; it collided with
+  Rectangle, and the volume keys are the better gesture anyway since macOS can
+  only offer a greyed-out slider for a device with no Core Audio volume.)
 - 0% = −96 dB (silence), 100% = 0 dB (unity) — the slider mirrors Console's knob
   position exactly, so the two can never disagree.
 
@@ -162,8 +165,19 @@ resolved MONITOR output, device online/offline, and every level change go to the
 unified log under subsystem `com.nicholaspsmith.ApolloMonitor`.
 
 **`main.swift`** — `StatusItemController` for icon and menu, `HotkeyTap` bound to
-`.key(126, [.command, .option])` → `monitor.up` and `.key(125, …)` →
-`monitor.down`, `repeatsOnHold: true`, `onMatch` returning `true` to swallow.
+`.mediaKey(0, …)` → `monitor.up` and `.mediaKey(1, …)` → `monitor.down`
+(`NX_KEYTYPE_SOUND_UP`/`_DOWN` from `ev_keymap.h`), each with and without `.fn`
+because `Binding.matches` is exact and some keyboards report the function layer
+on media keys. `repeatsOnHold: true`; `onMatch` returns `true` to swallow, which
+is also what suppresses the useless system volume HUD.
+
+**`DefaultOutputWatcher`** — whether macOS's default output is a Universal Audio
+device, cached and refreshed by a Core Audio property listener (plus each poll
+tick). The volume keys are swallowed **only** when it is and the engine is live;
+otherwise `onMatch` returns `false` and the key behaves normally, so switching to
+the built-in speakers does not leave them without volume keys. The lookup is
+cached because it runs inside the tap callback, and HAL calls can block — a tap
+that blocks gets disabled by the system.
 Reuses keylight's trust gating, `trustTimer`, and `reassertTap` tap-leapfrog
 workaround.
 
