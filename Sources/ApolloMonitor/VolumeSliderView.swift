@@ -24,7 +24,7 @@ final class VolumeSliderView: NSView {
         static let leftPad: CGFloat = 20
         static let rightPad: CGFloat = 12
         static let sliderWidth: CGFloat = 150
-        static let labelWidth: CGFloat = 42
+        static let labelWidth: CGFloat = 96
         static let gap: CGFloat = 8
         static let height: CGFloat = 24
         /// Half a knob width. See `VolumeStep.index(atX:…)`.
@@ -38,10 +38,12 @@ final class VolumeSliderView: NSView {
     var onIndexChange: ((Int) -> Void)?
 
     private var index: Int
+    private var db: Double
     private var isLive: Bool
 
-    init(index: Int, isLive: Bool) {
+    init(index: Int, db: Double, isLive: Bool) {
         self.index = index
+        self.db = db
         self.isLive = isLive
 
         let width = Layout.leftPad + Layout.sliderWidth + Layout.gap
@@ -87,8 +89,9 @@ final class VolumeSliderView: NSView {
     /// Reflect a level that changed underneath us — the hardware knob, Console's
     /// fader, or a hotkey pressed while the menu is open. Setting a control's
     /// value programmatically does not fire its action, so this cannot loop.
-    func apply(index newIndex: Int, isLive newIsLive: Bool) {
+    func apply(index newIndex: Int, db newDb: Double, isLive newIsLive: Bool) {
         index = newIndex
+        db = newDb
         isLive = newIsLive
         slider.doubleValue = Double(newIndex)
         slider.isEnabled = newIsLive
@@ -96,7 +99,9 @@ final class VolumeSliderView: NSView {
     }
 
     private func refreshLabel() {
-        percentLabel.stringValue = "\(VolumeStep.percent(index: index))%"
+        // Both units: the slider shows knob position, but a press moves the level
+        // by a whole dB, which the percentage is too coarse to reflect.
+        percentLabel.stringValue = "\(VolumeStep.percent(index: index))% · \(LevelDb.label(db))"
         percentLabel.textColor = isLive ? .secondaryLabelColor : .tertiaryLabelColor
     }
 

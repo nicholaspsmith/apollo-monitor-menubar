@@ -13,7 +13,11 @@ struct MonitorState: Equatable {
     var monitorResolved = false
     var deviceOnline = false
     var deviceName: String?
+    /// Knob position, 0...20 — coarse, drives the slider.
     var index = 0
+    /// The precise level. Defaults to silence, never unity: if anything ever acts
+    /// before the real value arrives, it must not step down from 0 dB.
+    var db = LevelDb.minimum
     var muted = false
     var dimmed = false
 
@@ -190,9 +194,11 @@ final class EngineClient {
         // applied in the SAME update that flips `monitorResolved`: observers act
         // the moment the state goes live, so publishing "resolved" while `index`
         // is still the default 0 makes the first step run from the wrong value.
-        guard let tapered = properties?[Paths.Key.monitorLevelTapered]?[Paths.Key.value]?.doubleValue
+        guard
+            let tapered = properties?[Paths.Key.monitorLevelTapered]?[Paths.Key.value]?.doubleValue,
+            let db = properties?[Paths.Key.monitorLevelDb]?[Paths.Key.value]?.doubleValue
         else {
-            log.error("output \(output, privacy: .public) is named MONITOR but has no CRMonitorLevelTapered")
+            log.error("output \(output, privacy: .public) is named MONITOR but has no level properties")
             return
         }
 
@@ -201,9 +207,11 @@ final class EngineClient {
         update {
             $0.monitorResolved = true
             $0.index = VolumeStep.index(tapered: tapered)
+            $0.db = LevelDb.clamp(db)
         }
 
         send(StateTreeCodec.subscribe(Paths.monitorLevelTapered(device: deviceIndex, output: output)))
+        send(StateTreeCodec.subscribe(Paths.monitorLevelDb(device: deviceIndex, output: output)))
         send(StateTreeCodec.subscribe(Paths.mute(device: deviceIndex, output: output)))
         send(StateTreeCodec.subscribe(Paths.dimOn(device: deviceIndex, output: output)))
     }
@@ -251,6 +259,10 @@ final class EngineClient {
             if let tapered = message.value?.doubleValue {
                 update { $0.index = VolumeStep.index(tapered: tapered) }
             }
+        } else if message.path == Paths.monitorLevelDb(device: deviceIndex, output: output) {
+            if let db = message.value?.doubleValue {
+                update { $0.db = LevelDb.clamp(db) }
+            }
         } else if message.path == Paths.mute(device: deviceIndex, output: output) {
             if let muted = message.value?.boolValue { update { $0.muted = muted } }
         } else if message.path == Paths.dimOn(device: deviceIndex, output: output) {
@@ -263,8 +275,8 @@ final class EngineClient {
         mutate(&copy)
         guard copy != state else { return }
 
-        if copy.index != state.index {
-            log.notice("level \(VolumeStep.percent(index: copy.index), privacy: .public)% (index \(copy.index, privacy: .public))")
+        if copy.db != state.db || copy.index != state.index {
+            log.notice("level \(LevelDb.label(copy.db), privacy: .public) (\(VolumeStep.percent(index: copy.index), privacy: .public)%)")
         }
         if copy.deviceOnline != state.deviceOnline || copy.deviceName != state.deviceName {
             log.notice("device \(copy.deviceName ?? "?", privacy: .public) online=\(copy.deviceOnline, privacy: .public)")
@@ -296,6 +308,25 @@ final class EngineClient {
 
     func step(_ direction: StepDirection) {
         setIndex(VolumeStep.next(index: state.index, direction))
+    }
+
+    /// Write a precise level in dB. This is the fine path — `CRMonitorLevel` holds
+    /// arbitrary values, unlike the tapered property's 1/54 grid.
+    func setDb(_ db: Double) {
+        guard let output = monitorOutput, state.isLive else { return }
+        let clamped = LevelDb.clamp(db)
+
+        // Optimistic, so key repeats compound from the value just written rather
+        // than racing the echo. The tapered index follows when the echo lands.
+        update { $0.db = clamped }
+        send(StateTreeCodec.set(
+            Paths.monitorLevelDb(device: deviceIndex, output: output), clamped
+        ))
+    }
+
+    /// One whole-dB step — what a volume key press does.
+    func stepDb(_ direction: StepDirection) {
+        setDb(LevelDb.next(db: state.db, direction))
     }
 
     func setMuted(_ muted: Bool) {

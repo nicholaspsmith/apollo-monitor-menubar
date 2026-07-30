@@ -47,6 +47,7 @@ public enum Paths {
     public enum Key {
         public static let name = "Name"
         public static let monitorLevelTapered = "CRMonitorLevelTapered"
+        public static let monitorLevelDb = "CRMonitorLevel"
         public static let value = "value"
         public static let children = "children"
         public static let properties = "properties"

@@ -24,8 +24,15 @@ final class App: NSObject, NSApplicationDelegate {
     private var status: StatusItemController!
     private let engine = EngineClient()
     private let output = DefaultOutputWatcher()
+    private let hud = VolumeHUD()
     private var tap: HotkeyTap!
     private var trustTimer: Timer?
+
+    /// Last level the overlay showed, so it only appears when the level moves.
+    private var lastShownDb: Double?
+    /// Dragging the menu slider is its own feedback; an overlay on top of the open
+    /// menu would just be in the way.
+    private var hudSuppressedUntil = Date.distantPast
 
     /// The slider inside the currently-open menu, if any, so pushes from the
     /// hardware knob move it while the user is looking at it.
@@ -49,7 +56,8 @@ final class App: NSObject, NSApplicationDelegate {
         engine.onChange = { [weak self] state in
             guard let self else { return }
             self.refreshIcon()
-            self.sliderView?.apply(index: state.index, isLive: state.isLive)
+            self.sliderView?.apply(index: state.index, db: state.db, isLive: state.isLive)
+            self.showHUDIfLevelMoved(state)
         }
         engine.start()
 
@@ -127,8 +135,26 @@ final class App: NSObject, NSApplicationDelegate {
         }
 
         guard output.isUniversalAudio, engine.state.isLive else { return false }
-        engine.step(direction)
+        engine.stepDb(direction)
         return true
+    }
+
+    /// The overlay follows the level itself rather than the keypress, so turning the
+    /// knob on the Apollo or moving Console's fader shows the same readout. Driven
+    /// off the dB value because that is what changes on every single press — the
+    /// tapered index only moves every couple of steps.
+    private func showHUDIfLevelMoved(_ state: MonitorState) {
+        guard state.isLive else { return }
+        defer { lastShownDb = state.db }
+
+        guard let previous = lastShownDb else { return }  // first reading, not a change
+        guard previous != state.db, Date() >= hudSuppressedUntil else { return }
+
+        hud.show(
+            deviceName: state.deviceName,
+            db: state.db,
+            fraction: VolumeStep.tapered(index: state.index)
+        )
     }
 
     // MARK: - Icon + menu
@@ -159,8 +185,12 @@ final class App: NSObject, NSApplicationDelegate {
         menu.addItem(disabledItem(state.statusLine))
 
         let sliderItem = NSMenuItem()
-        let slider = VolumeSliderView(index: state.index, isLive: state.isLive)
-        slider.onIndexChange = { [weak self] index in self?.engine.setIndex(index) }
+        let slider = VolumeSliderView(index: state.index, db: state.db, isLive: state.isLive)
+        slider.onIndexChange = { [weak self] index in
+            guard let self else { return }
+            self.hudSuppressedUntil = Date().addingTimeInterval(1)
+            self.engine.setIndex(index)
+        }
         sliderItem.view = slider
         sliderView = slider
         menu.addItem(sliderItem)
@@ -235,11 +265,11 @@ func runHeadlessStep(_ direction: StepDirection) {
     engine.onChange = { state in
         guard state.isLive, !stepped else { return }
         stepped = true
-        engine.step(direction)
+        engine.stepDb(direction)
         // Let the engine's echo land so the number printed is the level the
         // hardware actually settled on, not just what we asked for.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            print("\(VolumeStep.percent(index: engine.state.index))%")
+            print(LevelDb.label(engine.state.db))
             exit(0)
         }
     }

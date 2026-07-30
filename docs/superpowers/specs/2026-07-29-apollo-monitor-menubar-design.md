@@ -88,15 +88,36 @@ this device reports.
 - Menu-bar icon showing monitor level, greyed when the Apollo is unreachable.
 - Dropdown (real `NSMenu`) containing a status row, a **horizontal slider**,
   Mute, Dim, Start at Login, Quit.
-- The Mac's **volume up/down keys** remapped to the monitor level, 20 even
-  increments across 0–100%. (⌘⌥↑/↓ was the first attempt; it collided with
-  Rectangle, and the volume keys are the better gesture anyway since macOS can
-  only offer a greyed-out slider for a device with no Core Audio volume.)
+- The Mac's **volume up/down keys** remapped to the monitor level, **1 dB per
+  press**. (⌘⌥↑/↓ was the first attempt; it collided with Rectangle, and the volume
+  keys are the better gesture anyway since macOS can only offer a greyed-out slider
+  for a device with no Core Audio volume.)
+- A **volume overlay** replacing the system HUD the swallowed key suppresses.
+- The slider keeps its 21 positions (5% of knob travel each), mirroring Console's
+  knob; the keys are the fine control.
 - 0% = −96 dB (silence), 100% = 0 dB (unity) — the slider mirrors Console's knob
   position exactly, so the two can never disagree.
 
 Out of scope: multiple Apollo devices (device 0 only), surround, cue outputs,
 preamp control, a preferences window, rebindable hotkeys.
+
+### 3. dB is the fine control; tapered is only a coarse report
+
+`CRMonitorLevel` accepts and stores arbitrary values, while
+`CRMonitorLevelTapered` stays pinned to its 1/54 grid across the same span:
+
+| set dB | read dB | read tapered | ×54 |
+|---|---|---|---|
+| −30.00 | −30.00 | 0.259259 | 14.00 |
+| −29.50 | −29.50 | 0.259259 | 14.00 |
+| −29.10 | −29.10 | 0.259259 | 14.00 |
+| −28.00 | −28.00 | 0.259259 | 14.00 |
+| −27.25 | −27.25 | 0.277778 | 15.00 |
+
+**Therefore:** stepping happens in dB, not through the tapered ladder. One grid
+step is ~2 dB at normal listening levels, so a 1 dB step is ~0.9% of knob travel —
+finer than a whole percentage point, which 55 hardware positions cannot express.
+The tapered value is still read, for the slider's position.
 
 ## Architecture
 
@@ -121,6 +142,12 @@ reads and several frames arriving in one read; that is the likeliest bug in the
 app, and here it is testable without a socket.
 
 **`Paths.swift`** — path construction and the well-known property names.
+
+**`LevelDb.swift`** — the fine unit: clamping to −96…0 and whole-dB stepping that
+floors before stepping up (and ceils before stepping down), so a fractional level
+left by the hardware knob lands on the integer ladder rather than carrying its
+fraction forever. Non-finite input falls to −96, never 0 — defaulting the wrong way
+would mean a stray value slamming the monitors to unity.
 
 **`VolumeStep.swift`** — the invariant:
 
@@ -159,6 +186,13 @@ tick marks, which would otherwise be drawn as 21 visible notches.
 exits. It uses no event tap and so needs no Accessibility permission, which makes
 it both an escape hatch for binding the keys from Shortcuts or Karabiner and the
 way the write path gets exercised without a UI.
+
+**`VolumeHUD`** — a borderless, non-activating `NSPanel` at `.statusBar` level
+that ignores mouse events, joins all spaces, and sits above full-screen apps. Shows
+device name, a level bar (knob travel) and the exact dB, top-right below the menu
+bar where macOS puts its own, fading after 1.4 s. Driven by the *level* rather than
+the keypress, so the hardware knob and Console's fader raise it too; suppressed for
+~1 s after a menu-slider drag, which is already its own feedback.
 
 **Diagnostics** — a menu-bar app has nowhere to print, so socket state, the
 resolved MONITOR output, device online/offline, and every level change go to the
@@ -237,6 +271,16 @@ app against the live engine:
   process ~40 ms later, which is the same path the hardware knob takes
 - slider changes reaching the hardware: index 6 → 8 put the engine at 22/54
   (−16.0 dB)
+
+Volume-key and overlay behaviour verified after the fact:
+
+- `--step up/up/down` moving −43 → −42 → −41 → −42, confirming 1 dB granularity
+- the overlay's on-screen presence read from the window server: `owner=Apollo
+  Monitor`, `layer=25`, `alpha=1.00`, `bounds=(1672, 46, 232, 62)` — 16 px inside
+  the right edge, just below the menu bar — absent before the level changed and
+  gone again 2.5 s later
+- the overlay firing once per level change, not twice, despite dB and tapered
+  arriving as two separate pushes
 
 Not verified here: a real mouse drag (the geometry is unit-tested; the event loop
 is not), the reconnect path (would mean killing the engine mid-session), a
