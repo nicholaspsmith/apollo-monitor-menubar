@@ -13,8 +13,9 @@ struct MonitorState: Equatable {
     var monitorResolved = false
     var deviceOnline = false
     var deviceName: String?
-    /// Knob position, 0...20 — coarse, drives the slider.
-    var index = 0
+    /// Knob travel, 0...1, exactly as the engine reports it. Drives the slider and
+    /// the menu-bar gauge; never quantised on the way in.
+    var tapered = 0.0
     /// The precise level. Defaults to silence, never unity: if anything ever acts
     /// before the real value arrives, it must not step down from 0 dB.
     var db = LevelDb.minimum
@@ -206,7 +207,7 @@ final class EngineClient {
         monitorOutput = output
         update {
             $0.monitorResolved = true
-            $0.index = VolumeStep.index(tapered: tapered)
+            $0.tapered = KnobPosition.clampTapered(tapered)
             $0.db = LevelDb.clamp(db)
         }
 
@@ -257,7 +258,7 @@ final class EngineClient {
             // both map back through the same rounding, so neither needs special
             // handling.
             if let tapered = message.value?.doubleValue {
-                update { $0.index = VolumeStep.index(tapered: tapered) }
+                update { $0.tapered = KnobPosition.clampTapered(tapered) }
             }
         } else if message.path == Paths.monitorLevelDb(device: deviceIndex, output: output) {
             if let db = message.value?.doubleValue {
@@ -275,8 +276,8 @@ final class EngineClient {
         mutate(&copy)
         guard copy != state else { return }
 
-        if copy.db != state.db || copy.index != state.index {
-            log.notice("level \(LevelDb.label(copy.db), privacy: .public) (\(VolumeStep.percent(index: copy.index), privacy: .public)%)")
+        if copy.db != state.db || copy.tapered != state.tapered {
+            log.notice("level \(LevelDb.label(copy.db), privacy: .public) (\(KnobPosition.percent(tapered: copy.tapered), privacy: .public)%)")
         }
         if copy.deviceOnline != state.deviceOnline || copy.deviceName != state.deviceName {
             log.notice("device \(copy.deviceName ?? "?", privacy: .public) online=\(copy.deviceOnline, privacy: .public)")
@@ -291,23 +292,18 @@ final class EngineClient {
 
     // MARK: - Commands
 
-    /// Write a step index as a knob position. The index is canonical — see
-    /// `VolumeStep` for why the app never adds to a value it read back.
-    func setIndex(_ index: Int) {
+    /// Write a knob position as a whole percent. The engine snaps it to its own
+    /// 1/54 grid and pushes back the real position, which is what gets displayed.
+    func setPercent(_ percent: Int) {
         guard let output = monitorOutput, state.isLive else { return }
-        let clamped = VolumeStep.clamp(index)
+        let tapered = KnobPosition.tapered(percent: percent)
 
-        // Move the UI now rather than waiting for the echo, so dragging and key
-        // repeats feel immediate; the echo confirms the same value.
-        update { $0.index = clamped }
+        // Move the UI now rather than waiting for the echo, so dragging feels
+        // immediate; the echo corrects it to the snapped value milliseconds later.
+        update { $0.tapered = tapered }
         send(StateTreeCodec.set(
-            Paths.monitorLevelTapered(device: deviceIndex, output: output),
-            VolumeStep.tapered(index: clamped)
+            Paths.monitorLevelTapered(device: deviceIndex, output: output), tapered
         ))
-    }
-
-    func step(_ direction: StepDirection) {
-        setIndex(VolumeStep.next(index: state.index, direction))
     }
 
     /// Write a precise level in dB. This is the fine path — `CRMonitorLevel` holds

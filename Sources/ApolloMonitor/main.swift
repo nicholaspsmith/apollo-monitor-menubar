@@ -56,7 +56,7 @@ final class App: NSObject, NSApplicationDelegate {
         engine.onChange = { [weak self] state in
             guard let self else { return }
             self.refreshIcon()
-            self.sliderView?.apply(index: state.index, db: state.db, isLive: state.isLive)
+            self.sliderView?.apply(tapered: state.tapered, db: state.db, isLive: state.isLive)
             self.showHUDIfLevelMoved(state)
         }
         engine.start()
@@ -150,18 +150,14 @@ final class App: NSObject, NSApplicationDelegate {
         guard let previous = lastShownDb else { return }  // first reading, not a change
         guard previous != state.db, Date() >= hudSuppressedUntil else { return }
 
-        hud.show(
-            deviceName: state.deviceName,
-            db: state.db,
-            fraction: VolumeStep.tapered(index: state.index)
-        )
+        hud.show(deviceName: state.deviceName, db: state.db, fraction: state.tapered)
     }
 
     // MARK: - Icon + menu
 
     private func refreshIcon() {
         let state = engine.state
-        let fraction = CGFloat(VolumeStep.tapered(index: state.index))
+        let fraction = CGFloat(state.tapered)
         let live = state.isLive && !state.muted && tap?.isRunning == true
 
         let icon: NSImage
@@ -185,11 +181,21 @@ final class App: NSObject, NSApplicationDelegate {
         menu.addItem(disabledItem(state.statusLine))
 
         let sliderItem = NSMenuItem()
-        let slider = VolumeSliderView(index: state.index, db: state.db, isLive: state.isLive)
-        slider.onIndexChange = { [weak self] index in
+        let slider = VolumeSliderView(
+            tapered: state.tapered, db: state.db, isLive: state.isLive
+        )
+        slider.onPercentChange = { [weak self] percent in
             guard let self else { return }
             self.hudSuppressedUntil = Date().addingTimeInterval(1)
-            self.engine.setIndex(index)
+            self.engine.setPercent(percent)
+        }
+        // Tracking ignored live updates; show the position the hardware settled on.
+        slider.onTrackingEnd = { [weak self] in
+            guard let self else { return }
+            let current = self.engine.state
+            self.sliderView?.apply(
+                tapered: current.tapered, db: current.db, isLive: current.isLive
+            )
         }
         sliderItem.view = slider
         sliderView = slider

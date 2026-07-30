@@ -11,7 +11,7 @@ Built on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) and
 ```
 ┌────────────────────────────────┐
 │  Apollo Twin MkII · Connected  │
-│  ──────●────────  20% · -39 dB │
+│  ───●───────────  13% · -47 dB │
 ├────────────────────────────────┤
 │  Mute                          │
 │  Dim                           │
@@ -73,12 +73,16 @@ So the two are used for different jobs:
   normal listening levels one tapered grid step is ~2 dB, which makes 1 dB about
   0.9% of knob travel — finer than a single percentage point of the 0–100% scale,
   which cannot be expressed at all in only 55 hardware positions.
-- **The slider sets knob position** in 21 steps of 5%, mirroring Console's knob.
-  Because the engine snaps writes, a step index `0...20` is canonical: the app
-  writes `index / 20` and never adds to a value it read back, and
-  `round(tapered × 20)` recovers the index from the snapped echo. Exact for all 21
-  steps on any grid finer than 1/40, and
-  [unit-tested](Tests/ApolloMonitorCoreTests/VolumeStepTests.swift).
+- **The slider sets knob position**, mirroring Console's knob. Its knob sits at the
+  position the engine reports, continuously — the display is never quantised, so it
+  always agrees with Console. Dragging writes whole percents; the engine snaps those
+  to its 1/54 grid and pushes back the real position, which is then what is shown.
+  So a drop at 26% can settle at 14/54, and the readout tells you so.
+
+Nothing accumulates in either path — the keys compute an absolute dB, the slider an
+absolute position from the mouse — so no canonical step ladder is needed to stop
+drift. Conversions and the drag geometry are
+[unit-tested](Tests/ApolloMonitorCoreTests/KnobPositionTests.swift).
 
 0% is −96 dB (silence), 100% is 0 dB (unity).
 

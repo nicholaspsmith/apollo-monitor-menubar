@@ -3,6 +3,11 @@ import AppKit
 
 /// A horizontal monitor-level slider for use as an `NSMenuItem.view`.
 ///
+/// The knob sits at the position the engine reports, continuously — no quantising
+/// on the display side, so it always matches Console. Dragging writes whole
+/// percents; the engine snaps those to its own 1/54 grid and pushes back the real
+/// position, which is what then gets shown.
+///
 /// Three AppKit details drive the shape of this:
 ///
 /// 1. `NSMenu` reads a view's frame at insertion time, before any auto-layout
@@ -16,9 +21,6 @@ import AppKit
 ///    subview sitting under the cursor — hence the `hitTest` override. Without
 ///    it, mouse events go to the slider, whose tracking the menu suppresses, and
 ///    dragging does nothing at all.
-///
-/// Driving the value by hand also snaps it to the 21 step positions without
-/// `NSSlider`'s tick marks, which would otherwise be drawn as 21 visible notches.
 final class VolumeSliderView: NSView {
     private enum Layout {
         static let leftPad: CGFloat = 20
@@ -27,22 +29,30 @@ final class VolumeSliderView: NSView {
         static let labelWidth: CGFloat = 96
         static let gap: CGFloat = 8
         static let height: CGFloat = 24
-        /// Half a knob width. See `VolumeStep.index(atX:…)`.
+        /// Half a knob width. See `KnobPosition.percent(atX:…)`.
         static let knobInset: CGFloat = 9
     }
 
     private let slider = NSSlider()
-    private let percentLabel = NSTextField(labelWithString: "")
+    private let readoutLabel = NSTextField(labelWithString: "")
 
-    /// Called with each new step index, already de-duplicated.
-    var onIndexChange: ((Int) -> Void)?
+    /// Called with a whole percent while dragging, de-duplicated.
+    var onPercentChange: ((Int) -> Void)?
+    /// Called when the drag finishes, so the caller can re-apply live state that was
+    /// ignored during tracking.
+    var onTrackingEnd: (() -> Void)?
 
-    private var index: Int
+    /// Knob travel, 0...1, as reported by the engine.
+    private var tapered: Double
     private var db: Double
     private var isLive: Bool
+    /// External updates are ignored mid-drag: the engine echoes a snapped value
+    /// within milliseconds of each write, and applying it under the cursor would
+    /// drag the knob back out from under the user.
+    private var isTracking = false
 
-    init(index: Int, db: Double, isLive: Bool) {
-        self.index = index
+    init(tapered: Double, db: Double, isLive: Bool) {
+        self.tapered = KnobPosition.clampTapered(tapered)
         self.db = db
         self.isLive = isLive
 
@@ -57,8 +67,8 @@ final class VolumeSliderView: NSView {
             height: 20
         )
         slider.minValue = 0
-        slider.maxValue = Double(VolumeStep.maxIndex)
-        slider.doubleValue = Double(index)
+        slider.maxValue = 1
+        slider.doubleValue = self.tapered
         slider.isEnabled = isLive
         // Covers value changes that do not come through `mouseDown`: VoiceOver's
         // increment/decrement, and anything else driving the control directly.
@@ -67,16 +77,16 @@ final class VolumeSliderView: NSView {
         slider.isContinuous = true
         addSubview(slider)
 
-        percentLabel.frame = NSRect(
+        readoutLabel.frame = NSRect(
             x: Layout.leftPad + Layout.sliderWidth + Layout.gap,
             y: (Layout.height - 16) / 2,
             width: Layout.labelWidth,
             height: 16
         )
-        percentLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-        percentLabel.textColor = .secondaryLabelColor
-        percentLabel.alignment = .right
-        addSubview(percentLabel)
+        readoutLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        readoutLabel.textColor = .secondaryLabelColor
+        readoutLabel.alignment = .right
+        addSubview(readoutLabel)
 
         refreshLabel()
     }
@@ -87,22 +97,24 @@ final class VolumeSliderView: NSView {
     // MARK: - External updates
 
     /// Reflect a level that changed underneath us — the hardware knob, Console's
-    /// fader, or a hotkey pressed while the menu is open. Setting a control's
+    /// fader, or a volume key pressed while the menu is open. Setting a control's
     /// value programmatically does not fire its action, so this cannot loop.
-    func apply(index newIndex: Int, db newDb: Double, isLive newIsLive: Bool) {
-        index = newIndex
+    func apply(tapered newTapered: Double, db newDb: Double, isLive newIsLive: Bool) {
+        guard !isTracking else { return }
+        tapered = KnobPosition.clampTapered(newTapered)
         db = newDb
         isLive = newIsLive
-        slider.doubleValue = Double(newIndex)
+        slider.doubleValue = tapered
         slider.isEnabled = newIsLive
         refreshLabel()
     }
 
     private func refreshLabel() {
-        // Both units: the slider shows knob position, but a press moves the level
-        // by a whole dB, which the percentage is too coarse to reflect.
-        percentLabel.stringValue = "\(VolumeStep.percent(index: index))% · \(LevelDb.label(db))"
-        percentLabel.textColor = isLive ? .secondaryLabelColor : .tertiaryLabelColor
+        // Both units: the slider shows knob position, but a volume key moves the
+        // level by a whole dB, which the percentage is too coarse to reflect.
+        readoutLabel.stringValue =
+            "\(KnobPosition.percent(tapered: tapered))% · \(LevelDb.label(db))"
+        readoutLabel.textColor = isLive ? .secondaryLabelColor : .tertiaryLabelColor
     }
 
     // MARK: - Tracking
@@ -116,6 +128,12 @@ final class VolumeSliderView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         guard isLive, let window else { return }
+
+        isTracking = true
+        defer {
+            isTracking = false
+            onTrackingEnd?()
+        }
 
         var current = event
         while true {
@@ -133,7 +151,7 @@ final class VolumeSliderView: NSView {
 
     private func commit(at locationInWindow: NSPoint) {
         let local = convert(locationInWindow, from: nil)
-        commit(index: VolumeStep.index(
+        commit(percent: KnobPosition.percent(
             atX: local.x,
             trackMinX: slider.frame.minX,
             trackWidth: slider.frame.width,
@@ -142,14 +160,14 @@ final class VolumeSliderView: NSView {
     }
 
     @objc private func sliderChanged() {
-        commit(index: VolumeStep.clamp(Int(slider.doubleValue.rounded())))
+        commit(percent: KnobPosition.percent(tapered: slider.doubleValue))
     }
 
-    private func commit(index newIndex: Int) {
-        guard newIndex != index else { return }
-        index = newIndex
-        slider.doubleValue = Double(newIndex)
+    private func commit(percent: Int) {
+        guard percent != KnobPosition.percent(tapered: tapered) else { return }
+        tapered = KnobPosition.tapered(percent: percent)
+        slider.doubleValue = tapered
         refreshLabel()
-        onIndexChange?(newIndex)
+        onPercentChange?(percent)
     }
 }

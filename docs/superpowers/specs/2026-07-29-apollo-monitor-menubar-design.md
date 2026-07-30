@@ -72,16 +72,17 @@ So `set(read() + 0.05)` would compound the snap error on every keypress and the
 **Therefore:** a canonical step index `0...20` is the source of truth. The app
 always sends `index / 20` and never accumulates from a read-back value.
 
-### 2. The index round-trips through the grid losslessly
+### 2. Nothing needs to accumulate, so the snap cannot cause drift
 
-For every `i` in `0...20`, `round(snap(i / 20) × 20) == i` where
-`snap(x) = round(x × 54) / 54`. Checked for all 21 steps.
+An earlier revision carried a canonical step index `0...20` to stop repeated
+`set(read() + delta)` from compounding the snap error. That machinery is gone: the
+volume keys compute an absolute dB from the current level, and the slider computes
+an absolute position from the mouse. Neither adds to a value it read back, so there
+is nothing to drift.
 
-**Therefore:** external changes resync with `index = round(tapered × 20)`, and
-the engine's snapped echo of our own writes maps back to the index we sent — no
-drift, no need to distinguish our writes from someone else's. The property holds
-for any grid finer than 1/40, so it does not depend on 54 being exact; 54 is what
-this device reports.
+The snap still matters for *display*: a write of 26% comes back as 14/54, and the
+slider shows the returned value rather than the requested one, so it always agrees
+with Console.
 
 ## Scope
 
@@ -93,8 +94,8 @@ this device reports.
   keys are the better gesture anyway since macOS can only offer a greyed-out slider
   for a device with no Core Audio volume.)
 - A **volume overlay** replacing the system HUD the swallowed key suppresses.
-- The slider keeps its 21 positions (5% of knob travel each), mirroring Console's
-  knob; the keys are the fine control.
+- The slider shows the **continuously reported** knob position and writes whole
+  percents, mirroring Console's knob; the keys are the fine control.
 - 0% = −96 dB (silence), 100% = 0 dB (unity) — the slider mirrors Console's knob
   position exactly, so the two can never disagree.
 
@@ -149,15 +150,17 @@ left by the hardware knob lands on the integer ladder rather than carrying its
 fraction forever. Non-finite input falls to −96, never 0 — defaulting the wrong way
 would mean a stray value slamming the monitors to unity.
 
-**`VolumeStep.swift`** — the invariant:
+**`KnobPosition.swift`** — knob travel as a percentage, plus the drag geometry:
 
 ```
-stepCount        = 20                       index ∈ 0...20
-tapered(index)   = Double(index) / 20
-percent(index)   = index * 5
-index(tapered:)  = clamp(round(tapered * 20), 0, 20)
-next(index, dir) = clamp(index ± 1, 0, 20)
+percent(tapered:)   = clamp(round(tapered * 100), 0, 100)   // display
+tapered(percent:)   = percent / 100                         // writes, rounded to 1%
+percent(atX:trackMinX:trackWidth:knobInset:)                // mouse → percent
 ```
+
+The track is inset by half a knob width at each end so the knob's centre can reach
+both extremes; without it the last half-knob of travel is unreachable and 100%
+cannot be selected by mouse.
 
 ### ApolloMonitor
 
@@ -174,10 +177,12 @@ event-tracking loop, because `NSMenu` tracking does not reliably deliver
 continuous drags to embedded views. `hitTest` returns the container, so the click
 is not swallowed by the `NSSlider` subview under the cursor first — without that
 the slider's own (menu-suppressed) tracking takes the event and dragging is dead.
-The position → index mapping lives in `VolumeStep.index(atX:…)` so it can be
+The position → percent mapping lives in `KnobPosition.percent(atX:…)` so it can be
 unit-tested without a mouse, and the slider's action is wired too, which covers
-VoiceOver increment/decrement. Emits only on index *change*, so a full drag sends
-at most 21 writes.
+VoiceOver increment/decrement. Emits only on whole-percent *change*, so a full drag
+sends at most 101 writes. External updates are ignored while tracking: the engine
+echoes a snapped value within milliseconds of each write, and applying it under the
+cursor would pull the knob out from under the user.
 
 Driving the value by hand also snaps it to the 21 positions without `NSSlider`'s
 tick marks, which would otherwise be drawn as 21 visible notches.
@@ -221,12 +226,16 @@ the Apollo is offline or the socket is down.
 ## Data flow
 
 ```
-⌘⌥↑ → HotkeyTap.onMatch("monitor.up")
-     → VolumeStep.next(state.index, .up)          // 6 → 7
-     → set …/CRMonitorLevelTapered/value 0.35
-     → engine snaps to 19/54 and PUSHES 0.351852
-     → FrameParser → VolumeStep.index(tapered:) = 7
-     → state.index = 7 → icon + slider refresh
+volume-up key → HotkeyTap.onMatch("monitor.up")
+     → LevelDb.next(state.db, .up)                // -43 → -42
+     → set …/CRMonitorLevel/value -42.000000
+     → engine PUSHES -42.0, and the coarser tapered value when it crosses a grid line
+     → FrameParser → state.db / state.tapered → icon, slider, overlay
+
+slider drag  → KnobPosition.percent(atX:…)        // 26%
+     → set …/CRMonitorLevelTapered/value 0.260000
+     → engine snaps to 14/54 and PUSHES 0.259259
+     → slider settles on the position the hardware actually took
 ```
 
 External knob and Console fader moves enter at the push step and follow the
@@ -247,12 +256,14 @@ identical path, so there is exactly one source of truth.
 
 Unit tests on Core (29 tests):
 
-- `VolumeStep`: the 21-step round-trip against a model of the 1/54 snap grid, and
-  against every other plausible grid; clamping at both ends; percent mapping;
-  `next` in both directions; 20 presses crossing the full range.
+- `KnobPosition`: percent ↔ tapered round-trips exactly for all 101 percents;
+  values the engine actually reports (14/54 → 26%, 17/54 → 31%); clamping and NaN.
+- `LevelDb`: whole-dB stepping, fractional levels snapping onto the integer ladder,
+  clamping at −96/0, 96 presses spanning the range, and non-finite input falling to
+  silence rather than unity.
 - `SliderGeometry`: both track extremes reachable, centre is 50%, out-of-track
-  positions clamp, a left-to-right sweep is monotonic and visits all 21 steps,
-  and a degenerate zero-width track does not divide by zero.
+  positions clamp, a left-to-right sweep is monotonic and visits every one of the
+  101 percents, and a degenerate zero-width track does not divide by zero.
 - `StateTree`: encode appends NUL and formats floats without exponent or locale;
   parse of a frame split at *every* byte offset; several frames in one read; an
   incomplete tail held back; `error` payloads; bool not decoding as 1; the real
@@ -281,6 +292,12 @@ Volume-key and overlay behaviour verified after the fact:
   gone again 2.5 s later
 - the overlay firing once per level change, not twice, despite dB and tapered
   arriving as two separate pushes
+- the slider reading 0.12962963 — exactly 7/54, labelled 13% — matching the engine
+  rather than snapping to a 5% bucket
+- writing 15% from the slider landing on 8/54 (−43 dB)
+- an external write reaching the slider *while the menu is open*
+  (19% · −38 dB → 15% · −44 dB), confirming pushes survive the menu's modal
+  tracking loop
 
 Not verified here: a real mouse drag (the geometry is unit-tested; the event loop
 is not), the reconnect path (would mean killing the engine mid-session), a

@@ -1,3 +1,8 @@
+/// Direction of a monitor-level adjustment.
+public enum StepDirection: Sendable {
+    case up, down
+}
+
 /// Monitor level in dB — the app's fine-grained unit.
 ///
 /// `CRMonitorLevel` accepts and stores arbitrary values (−29.5, −27.25 and so on
