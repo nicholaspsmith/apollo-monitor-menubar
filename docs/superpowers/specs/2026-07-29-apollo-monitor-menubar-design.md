@@ -138,11 +138,28 @@ Sends `set /Sleep false` every 3 s as keepalive. Reconnects with 0.5 → 5 s
 backoff on failure or close. Publishes `MonitorState` on the main queue.
 
 **`VolumeSliderView`** — an `NSView` with explicit frames (`NSMenu` reads the
-frame at insertion time, before any auto-layout pass — see `MenuBuilder`), an
-`NSSlider` with 21 tick marks and `allowsTickMarkValuesOnly`, and a percent
-label. `mouseDown` runs its own local event-tracking loop, because `NSMenu`
-tracking does not deliver continuous drags to embedded views. Emits only on
-index *change*, so a full drag sends at most 21 writes.
+frame at insertion time, before any auto-layout pass — see `MenuBuilder`), a
+drawn `NSSlider`, and a percent label. `mouseDown` runs its own local
+event-tracking loop, because `NSMenu` tracking does not reliably deliver
+continuous drags to embedded views. `hitTest` returns the container, so the click
+is not swallowed by the `NSSlider` subview under the cursor first — without that
+the slider's own (menu-suppressed) tracking takes the event and dragging is dead.
+The position → index mapping lives in `VolumeStep.index(atX:…)` so it can be
+unit-tested without a mouse, and the slider's action is wired too, which covers
+VoiceOver increment/decrement. Emits only on index *change*, so a full drag sends
+at most 21 writes.
+
+Driving the value by hand also snaps it to the 21 positions without `NSSlider`'s
+tick marks, which would otherwise be drawn as 21 visible notches.
+
+**Headless mode** — `ApolloMonitor --step up|down` adjusts the level once and
+exits. It uses no event tap and so needs no Accessibility permission, which makes
+it both an escape hatch for binding the keys from Shortcuts or Karabiner and the
+way the write path gets exercised without a UI.
+
+**Diagnostics** — a menu-bar app has nowhere to print, so socket state, the
+resolved MONITOR output, device online/offline, and every level change go to the
+unified log under subsystem `com.nicholaspsmith.ApolloMonitor`.
 
 **`main.swift`** — `StatusItemController` for icon and menu, `HotkeyTap` bound to
 `.key(126, [.command, .option])` → `monitor.up` and `.key(125, …)` →
@@ -180,18 +197,37 @@ identical path, so there is exactly one source of truth.
 
 ## Testing
 
-Unit tests on Core:
+Unit tests on Core (29 tests):
 
-- `VolumeStep`: the 21-step round-trip against a model of the 1/54 snap grid;
-  clamping at both ends; percent mapping; `next` in both directions.
-- `StateTree`: encode appends NUL; parse of a frame split mid-message; several
-  frames in one read; `error` payloads; scalar bool/number/string; the real
-  `/devices/0/outputs` node reply.
+- `VolumeStep`: the 21-step round-trip against a model of the 1/54 snap grid, and
+  against every other plausible grid; clamping at both ends; percent mapping;
+  `next` in both directions; 20 presses crossing the full range.
+- `SliderGeometry`: both track extremes reachable, centre is 50%, out-of-track
+  positions clamp, a left-to-right sweep is monotonic and visits all 21 steps,
+  and a degenerate zero-width track does not divide by zero.
+- `StateTree`: encode appends NUL and formats floats without exponent or locale;
+  parse of a frame split at *every* byte offset; several frames in one read; an
+  incomplete tail held back; `error` payloads; bool not decoding as 1; the real
+  `/devices/0/outputs` and output-node replies.
 
-`EngineClient`, the slider view, and the tap are OS glue, verified by running
-the app against the live engine: menu shows `Apollo Twin MkII · Connected`,
-slider drags and moves the level, ⌘⌥↑/↓ steps by 5%, and a change made in
-Console moves the slider.
+`EngineClient`, the slider view, and the tap are OS glue. Verified by running the
+app against the live engine:
+
+- discovery walk reaching `MONITOR resolved to output 4 on device 0` and
+  `level 30% (index 6)`, matching the hardware's −22.0 dB
+- the menu's items and states read back over the accessibility API, including the
+  view-based slider row reporting `AXSlider(6.0)` and `AXStaticText(30%)`
+- `--step down/up` moving 30 → 25 → 20 → 25 → 30% with the engine landing on
+  16/54 (−24.0 dB), index 6's grid point
+- the long-running instance picking up level changes written by a *separate*
+  process ~40 ms later, which is the same path the hardware knob takes
+- slider changes reaching the hardware: index 6 → 8 put the engine at 22/54
+  (−16.0 dB)
+
+Not verified here: a real mouse drag (the geometry is unit-tested; the event loop
+is not), the reconnect path (would mean killing the engine mid-session), a
+physical unplug, and the ⌘⌥↑/↓ tap itself, which cannot fire until Accessibility
+is granted.
 
 ## Signing
 
@@ -205,6 +241,7 @@ build.
 
 ## Notes
 
+- `ApolloMonitor --step up|down` needs no Accessibility; the tap-based hotkeys do.
 - ⌘⌥↑/↓ are swallowed globally and will shadow any app-specific binding on those
   keys.
 - `~/.local/bin/ua-monitor` (Python CLI, same protocol) stays for scripting. The
