@@ -251,6 +251,7 @@ identical path, so there is exactly one source of truth.
 | No output named `MONITOR` | Row explains; no crash |
 | Accessibility not granted | Hotkeys inert; "⚠ Grant Accessibility…" row; slider still works |
 | Malformed or `error` payload | Logged and ignored |
+| Overlay window stops reaching the screen | Panel rebuilt on wake, screen-configuration change, or five minutes idle (see `OverlayRefresh`) |
 
 ## Testing
 

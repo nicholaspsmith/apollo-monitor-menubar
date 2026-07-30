@@ -133,6 +133,15 @@ It follows the *level*, not the keypress, so turning the knob on the Apollo itse
 or moving Console's fader raises the same readout. Dragging the menu slider does
 not, since that is already its own feedback.
 
+The panel is rebuilt when the machine wakes, when the screen configuration changes,
+or when the overlay has gone unused for five minutes. A long-running instance once
+reached a state where every `show()` ran correctly and yet no window ever reached
+the screen; restarting fixed it. The trigger was never reproduced, and a process
+cannot reliably ask whether its own window is on screen —
+`CGWindowListCopyWindowInfo` answers differently for the caller — so the window is
+replaced across those transitions instead of repaired on detection. Rebuilding is
+sub-millisecond and never happens during a run of key presses.
+
 ### Pass-through
 
 The volume keys are only intercepted while the Apollo is **the current default output
