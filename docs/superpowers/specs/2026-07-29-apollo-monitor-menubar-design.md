@@ -338,6 +338,8 @@ build.
 - `ApolloMonitor --step up|down` needs no Accessibility; the tap-based hotkeys do.
 - ⌘⌥↑/↓ are swallowed globally and will shadow any app-specific binding on those
   keys.
-- `~/.local/bin/ua-monitor` (Python CLI, same protocol) stays for scripting. The
-  app does not call it.
+- A Python CLI (`~/.local/bin/ua-monitor`) was used to reverse-engineer the
+  protocol and validate it before any Swift existed. It has been retired:
+  `ApolloMonitor --step up|down` covers the same ground, needs no Accessibility
+  permission either, and leaves one implementation of the protocol rather than two.
 - The protocol is undocumented and unsupported; a UA update could change it.
