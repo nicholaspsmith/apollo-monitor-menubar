@@ -1,7 +1,7 @@
 # Apollo Monitor — menu-bar volume control for UAD Console
 
 **Date:** 2026-07-29
-**Status:** approved, implementing
+**Status:** implemented
 
 ## Problem
 
