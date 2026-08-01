@@ -227,8 +227,10 @@ that blocks gets disabled by the system.
 Reuses keylight's trust gating, `trustTimer`, and `reassertTap` tap-leapfrog
 workaround.
 
-Icon: `MeterIcon.gauge(fraction:)`, template black when live, `.systemGray` when
-the Apollo is offline or the socket is down.
+Icon: `MeterIcon.arc(fraction:)` in `.systemGreen` while live, `.systemGray` when
+the Apollo is offline, muted, or the socket is down. Full colour rather than a
+template — template tinting keeps only the drawn alpha and would discard the
+green.
 
 ## Data flow
 
@@ -258,7 +260,7 @@ animation — happened synchronously before the tap returned.
 - The tap callback now does arithmetic and a socket write only.
 - UI work is coalesced onto the next main-queue turn, so the three state changes a
   press produces (optimistic write, dB echo, tapered echo) drive one pass, not three.
-- The menu-bar icon skips redraws that would be identical at gauge resolution.
+- The menu-bar icon skips redraws that would be identical at arc resolution.
 - The overlay caches its four symbol images and skips re-ordering and re-animating
   while it is already up, which is the whole of a held key.
 - A held key accelerates via `StepAcceleration`: 1 dB for the first five repeats,

@@ -14,7 +14,7 @@ struct MonitorState: Equatable {
     var deviceOnline = false
     var deviceName: String?
     /// Knob travel, 0...1, exactly as the engine reports it. Drives the slider and
-    /// the menu-bar gauge; never quantised on the way in.
+    /// the menu-bar arc; never quantised on the way in.
     var tapered = 0.0
     /// The precise level. Defaults to silence, never unity: if anything ever acts
     /// before the real value arrives, it must not step down from 0 dB.

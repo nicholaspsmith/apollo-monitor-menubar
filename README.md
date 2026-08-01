@@ -118,7 +118,7 @@ The Mac's own volume keys are taken over rather than some chord. On an Apollo th
 otherwise do nothing useful: because the device has no Core Audio volume, pressing
 them just raises the system HUD with a **greyed-out slider you cannot move**.
 Swallowing the key suppresses that HUD too, so the only feedback is the menu-bar
-gauge (which is live).
+level arc (which is live).
 
 ### The overlay
 

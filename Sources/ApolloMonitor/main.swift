@@ -200,26 +200,24 @@ final class App: NSObject, NSApplicationDelegate {
         let fraction = CGFloat(state.tapered)
         let live = state.isLive && !state.muted && tap?.isRunning == true
 
-        // The gauge is 18 points across, so changes finer than this cannot show.
+        // The arc is 18 points across, so changes finer than this cannot show.
         // Skipping identical redraws matters during a held key, when the level
         // changes several times a second.
         let key = "\(Int((state.tapered * 200).rounded()))|\(live)"
         guard key != lastIconKey else { return }
         lastIconKey = key
 
-        let icon: NSImage
-        if live {
-            // Match the default menu-bar glyph colour: a template image is tinted
-            // by the system, and inverted when the menu is open. The level reads
-            // from the needle angle.
-            icon = MeterIcon.gauge(fraction: fraction, color: .black)
-            icon.isTemplate = true
-        } else {
-            // Can't control the level right now — engine down, Apollo offline,
-            // muted, or Accessibility not yet granted. The menu says which.
-            icon = MeterIcon.gauge(fraction: fraction, color: .systemGray)
-        }
-        status.setIcon(icon)
+        // Full colour, not a template: template tinting keeps only the drawn alpha
+        // and would throw the green away. `MeterIcon.arc` draws its track at 28%
+        // alpha of the same colour, so this reads as a soft green track with a
+        // solid green fill, and stays legible on a light or dark menu bar.
+        //
+        // Grey when the level cannot be changed — engine down, Apollo offline,
+        // muted, or Accessibility not yet granted. The menu says which.
+        status.setIcon(MeterIcon.arc(
+            fraction: fraction,
+            color: live ? .systemGreen : .systemGray
+        ))
     }
 
     private func buildMenu(_ menu: NSMenu) {
