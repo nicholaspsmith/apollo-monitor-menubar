@@ -172,14 +172,21 @@ backoff on failure or close. Publishes `MonitorState` on the main queue.
 
 **`VolumeSliderView`** — an `NSView` with explicit frames (`NSMenu` reads the
 frame at insertion time, before any auto-layout pass — see `MenuBuilder`), a
-drawn `NSSlider`, and a percent label. `mouseDown` runs its own local
+hand-drawn track and knob, and a percent/dB label. `NSSlider` is not used: its
+`trackFillColor` — the documented way to tint the filled portion — is ignored by
+AppKit, leaving a uniform grey bar that reads as inactive, and since this view
+already owned hit-testing and tracking the control contributed nothing else.
+Drawing it directly gives an accent-tinted fill to the left of the knob and
+matches the overlay's bar. Accessibility is declared by hand (`.slider` role,
+percent value, increment/decrement), so VoiceOver still sees an adjustable
+slider. `mouseDown` runs its own local
 event-tracking loop, because `NSMenu` tracking does not reliably deliver
 continuous drags to embedded views. `hitTest` returns the container, so the click
 is not swallowed by the `NSSlider` subview under the cursor first — without that
 the slider's own (menu-suppressed) tracking takes the event and dragging is dead.
 The position → percent mapping lives in `KnobPosition.percent(atX:…)` so it can be
-unit-tested without a mouse, and the slider's action is wired too, which covers
-VoiceOver increment/decrement. Emits only on whole-percent *change*, so a full drag
+unit-tested without a mouse, and increment/decrement are implemented for
+VoiceOver. Emits only on whole-percent *change*, so a full drag
 sends at most 101 writes. External updates are ignored while tracking: the engine
 echoes a snapped value within milliseconds of each write, and applying it under the
 cursor would pull the knob out from under the user.

@@ -31,9 +31,10 @@ final class VolumeSliderView: NSView {
         static let height: CGFloat = 24
         /// Half a knob width. See `KnobPosition.percent(atX:…)`.
         static let knobInset: CGFloat = 9
+        static let knobDiameter: CGFloat = 18
+        static let trackHeight: CGFloat = 4
     }
 
-    private let slider = NSSlider()
     private let readoutLabel = NSTextField(labelWithString: "")
 
     /// Called with a whole percent while dragging, de-duplicated.
@@ -59,23 +60,6 @@ final class VolumeSliderView: NSView {
         let width = Layout.leftPad + Layout.sliderWidth + Layout.gap
             + Layout.labelWidth + Layout.rightPad
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: Layout.height))
-
-        slider.frame = NSRect(
-            x: Layout.leftPad,
-            y: (Layout.height - 20) / 2,
-            width: Layout.sliderWidth,
-            height: 20
-        )
-        slider.minValue = 0
-        slider.maxValue = 1
-        slider.doubleValue = self.tapered
-        applyLiveAppearance()
-        // Covers value changes that do not come through `mouseDown`: VoiceOver's
-        // increment/decrement, and anything else driving the control directly.
-        slider.target = self
-        slider.action = #selector(sliderChanged)
-        slider.isContinuous = true
-        addSubview(slider)
 
         readoutLabel.frame = NSRect(
             x: Layout.leftPad + Layout.sliderWidth + Layout.gap,
@@ -104,16 +88,69 @@ final class VolumeSliderView: NSView {
         tapered = KnobPosition.clampTapered(newTapered)
         db = newDb
         isLive = newIsLive
-        slider.doubleValue = tapered
-        applyLiveAppearance()
+        needsDisplay = true
         refreshLabel()
     }
 
-    /// Full-strength while the Apollo is reachable, muted when it is not — the
-    /// slider should not look inert just because it sits in a menu.
-    private func applyLiveAppearance() {
-        slider.isEnabled = isLive
-        slider.trackFillColor = isLive ? .controlAccentColor : nil
+    // MARK: - Drawing
+
+    /// `NSSlider` is not used for this. Its `trackFillColor` — the documented way
+    /// to tint the filled portion — is ignored by AppKit, so the control can only
+    /// be drawn as a uniform grey bar that reads as inactive. Since this view
+    /// already owns hit-testing and tracking, `NSSlider` was contributing nothing
+    /// but that drawing, and doing it here is both deterministic and a visual match
+    /// for the overlay's bar.
+    override func draw(_ dirtyRect: NSRect) {
+        let track = trackRect
+        let radius = track.height / 2
+
+        NSColor.labelColor.withAlphaComponent(isLive ? 0.20 : 0.12).setFill()
+        NSBezierPath(roundedRect: track, xRadius: radius, yRadius: radius).fill()
+
+        let centre = knobCentreX
+        var filled = track
+        filled.size.width = max(0, centre - track.minX)
+        if filled.width > radius {
+            (isLive ? NSColor.controlAccentColor : NSColor.tertiaryLabelColor).setFill()
+            NSBezierPath(roundedRect: filled, xRadius: radius, yRadius: radius).fill()
+        }
+
+        let knob = NSRect(
+            x: centre - Layout.knobDiameter / 2,
+            y: bounds.midY - Layout.knobDiameter / 2,
+            width: Layout.knobDiameter,
+            height: Layout.knobDiameter
+        )
+
+        NSGraphicsContext.saveGraphicsState()
+        let shadow = NSShadow()
+        shadow.shadowColor = NSColor.black.withAlphaComponent(0.28)
+        shadow.shadowBlurRadius = 2
+        shadow.shadowOffset = NSSize(width: 0, height: -1)
+        shadow.set()
+        (isLive ? NSColor.white : NSColor.white.withAlphaComponent(0.55)).setFill()
+        NSBezierPath(ovalIn: knob).fill()
+        NSGraphicsContext.restoreGraphicsState()
+
+        NSColor.black.withAlphaComponent(0.14).setStroke()
+        NSBezierPath(ovalIn: knob.insetBy(dx: 0.5, dy: 0.5)).stroke()
+    }
+
+    private var trackRect: NSRect {
+        NSRect(
+            x: Layout.leftPad,
+            y: (Layout.height - Layout.trackHeight) / 2,
+            width: Layout.sliderWidth,
+            height: Layout.trackHeight
+        )
+    }
+
+    /// The knob's centre travels between the track's insets, matching the geometry
+    /// `KnobPosition.percent(atX:…)` inverts.
+    private var knobCentreX: CGFloat {
+        let track = trackRect
+        let usable = track.width - Layout.knobInset * 2
+        return track.minX + Layout.knobInset + usable * CGFloat(tapered)
     }
 
     private func refreshLabel() {
@@ -160,21 +197,49 @@ final class VolumeSliderView: NSView {
         let local = convert(locationInWindow, from: nil)
         commit(percent: KnobPosition.percent(
             atX: local.x,
-            trackMinX: slider.frame.minX,
-            trackWidth: slider.frame.width,
+            trackMinX: trackRect.minX,
+            trackWidth: trackRect.width,
             knobInset: Layout.knobInset
         ))
     }
 
-    @objc private func sliderChanged() {
-        commit(percent: KnobPosition.percent(tapered: slider.doubleValue))
+    private func commit(percent: Int) {
+        // Clamp before the comparison, so stepping past an end is a no-op rather
+        // than repeatedly re-sending the same clamped value.
+        let target = KnobPosition.clampPercent(percent)
+        guard target != KnobPosition.percent(tapered: tapered) else { return }
+
+        tapered = KnobPosition.tapered(percent: target)
+        needsDisplay = true
+        refreshLabel()
+        onPercentChange?(target)
     }
 
-    private func commit(percent: Int) {
-        guard percent != KnobPosition.percent(tapered: tapered) else { return }
-        tapered = KnobPosition.tapered(percent: percent)
-        slider.doubleValue = tapered
-        refreshLabel()
-        onPercentChange?(percent)
+    // MARK: - Accessibility
+
+    // Drawing the control by hand means describing it by hand too, so VoiceOver
+    // still sees a slider it can read and adjust.
+
+    override func isAccessibilityElement() -> Bool { true }
+    override func accessibilityRole() -> NSAccessibility.Role? { .slider }
+    override func accessibilityLabel() -> String? { "Monitor level" }
+    override func accessibilityValue() -> Any? { KnobPosition.percent(tapered: tapered) }
+    override func isAccessibilityEnabled() -> Bool { isLive }
+
+    override func accessibilityPerformIncrement() -> Bool {
+        guard isLive else { return false }
+        commit(percent: KnobPosition.percent(tapered: tapered) + 1)
+        return true
+    }
+
+    override func accessibilityPerformDecrement() -> Bool {
+        guard isLive else { return false }
+        commit(percent: KnobPosition.percent(tapered: tapered) - 1)
+        return true
+    }
+
+    override func setAccessibilityValue(_ accessibilityValue: Any?) {
+        guard isLive, let percent = (accessibilityValue as? NSNumber)?.intValue else { return }
+        commit(percent: KnobPosition.clampPercent(percent))
     }
 }
