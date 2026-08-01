@@ -15,6 +15,7 @@ Built on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) and
 ├────────────────────────────────┤
 │  Mute                          │
 │  Dim                           │
+│  Show Volume Overlay         ✓ │
 │  Start at Login              ✓ │
 │  Quit Apollo Monitor        ⌘Q │
 └────────────────────────────────┘
@@ -132,6 +133,10 @@ fades after 1.4 s.
 It follows the *level*, not the keypress, so turning the knob on the Apollo itself
 or moving Console's fader raises the same readout. Dragging the menu slider does
 not, since that is already its own feedback.
+
+**Show Volume Overlay** in the menu turns it off and on; the choice persists. With
+it off the menu-bar arc is still live, so the level remains visible without
+anything appearing over your work.
 
 The panel is rebuilt when the machine wakes, when the screen configuration changes,
 or when the overlay has gone unused for five minutes. A long-running instance once

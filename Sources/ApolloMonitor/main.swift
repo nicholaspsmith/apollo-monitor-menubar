@@ -25,11 +25,13 @@ final class App: NSObject, NSApplicationDelegate {
     private let engine = EngineClient()
     private let output = DefaultOutputWatcher()
     private let hud = VolumeHUD()
+    private let overlayPreference = OverlayPreference()
     private var tap: HotkeyTap!
     private var trustTimer: Timer?
 
-    /// Last level the overlay showed, so it only appears when the level moves.
-    private var lastShownDb: Double?
+    /// Last level seen while live, so the overlay only appears when it moves.
+    /// Tracked even while the overlay is switched off — see `showHUDIfLevelMoved`.
+    private var lastObservedDb: Double?
     /// Coalesced UI work. Redrawing runs on the next main-queue turn rather than
     /// inside the event-tap callback, so the keystroke is never waiting on drawing.
     private var pendingState: MonitorState?
@@ -185,9 +187,16 @@ final class App: NSObject, NSApplicationDelegate {
     /// tapered index only moves every couple of steps.
     private func showHUDIfLevelMoved(_ state: MonitorState) {
         guard state.isLive else { return }
-        defer { lastShownDb = state.db }
 
-        guard let previous = lastShownDb else { return }  // first reading, not a change
+        // Track the level even while the overlay is switched off, or the record
+        // goes stale: changes made with it off would leave the last *shown* value
+        // behind, and coming back to that value later would read as "no change"
+        // and show nothing.
+        let previous = lastObservedDb
+        lastObservedDb = state.db
+
+        guard overlayPreference.isEnabled else { return }
+        guard let previous else { return }  // first reading, not a change
         guard previous != state.db, Date() >= hudSuppressedUntil else { return }
 
         hud.show(deviceName: state.deviceName, db: state.db, fraction: state.tapered)
@@ -277,6 +286,10 @@ final class App: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
+        let overlay = actionItem("Show Volume Overlay", #selector(toggleOverlay))
+        overlay.state = overlayPreference.isEnabled ? .on : .off
+        menu.addItem(overlay)
+
         let login = actionItem("Start at Login", #selector(toggleLogin))
         login.state = LoginItem.isEnabled ? .on : .off
         menu.addItem(login)
@@ -307,6 +320,13 @@ final class App: NSObject, NSApplicationDelegate {
     @objc private func grantTrust() {
         tap.requestTrust()
         startTapIfPossible()
+    }
+
+    @objc private func toggleOverlay() {
+        overlayPreference.isEnabled.toggle()
+        // Switching it off while it happens to be on screen should take it down
+        // now, not leave it sitting there for its remaining second.
+        if !overlayPreference.isEnabled { hud.dismiss() }
     }
 
     @objc private func toggleLogin() { LoginItem.toggle() }

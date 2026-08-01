@@ -214,6 +214,13 @@ final class VolumeHUD {
         return image
     }
 
+    /// Take it down now — used when the overlay is switched off while it is up.
+    func dismiss() {
+        hideTimer?.invalidate()
+        hideTimer = nil
+        hide()
+    }
+
     private func hide() {
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.3

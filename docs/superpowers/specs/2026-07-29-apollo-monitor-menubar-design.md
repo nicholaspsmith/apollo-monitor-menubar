@@ -88,12 +88,13 @@ with Console.
 
 - Menu-bar icon showing monitor level, greyed when the Apollo is unreachable.
 - Dropdown (real `NSMenu`) containing a status row, a **horizontal slider**,
-  Mute, Dim, Start at Login, Quit.
+  Mute, Dim, Show Volume Overlay, Start at Login, Quit.
 - The Mac's **volume up/down keys** remapped to the monitor level, **1 dB per
   press**. (⌘⌥↑/↓ was the first attempt; it collided with Rectangle, and the volume
   keys are the better gesture anyway since macOS can only offer a greyed-out slider
   for a device with no Core Audio volume.)
-- A **volume overlay** replacing the system HUD the swallowed key suppresses.
+- A **volume overlay** replacing the system HUD the swallowed key suppresses,
+  switchable from the menu and persisted (`OverlayPreference`).
 - The slider shows the **continuously reported** knob position and writes whole
   percents, mirroring Console's knob; the keys are the fine control.
 - 0% = −96 dB (silence), 100% = 0 dB (unity) — the slider mirrors Console's knob
