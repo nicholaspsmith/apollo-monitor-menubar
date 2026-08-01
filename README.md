@@ -1,9 +1,9 @@
 # Apollo Monitor
 
 A macOS menu-bar control for the **monitor output level of a Universal Audio
-Apollo**: a horizontal slider, connection status, the Mac's **volume keys**
-remapped to drive it in 1 dB steps, and a volume overlay to replace the one macOS
-cannot make work.
+Apollo**: a live level arc in the menu bar, a horizontal slider, connection
+status, the Mac's **volume keys** remapped to drive it in 1 dB steps, and a volume
+overlay to replace the one macOS cannot make work.
 
 Built on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) and
 [HotkeyKit](https://github.com/nicholaspsmith/HotkeyKit).
@@ -20,6 +20,21 @@ Built on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) and
 │  Quit Apollo Monitor        ⌘Q │
 └────────────────────────────────┘
 ```
+
+## The menu-bar icon
+
+![The menu-bar icon](docs/menubar-icon.png)
+
+A green arc whose filled length is the monitor level, drawn by
+[`MeterIcon`](https://github.com/nicholaspsmith/StatusItemKit) at 18pt. It follows
+the level live, including changes made on the Apollo's own knob or in Console.
+
+It turns **grey whenever the level cannot be changed** — the mixer engine is not
+running, the Apollo is offline, the output is muted, or Accessibility has not been
+granted yet. The menu says which.
+
+Being green means it is a full-colour image rather than a template, so unlike most
+menu-bar glyphs it keeps its colour instead of inverting when the menu opens.
 
 ## Why this exists
 
@@ -46,7 +61,7 @@ open.
 - Replies are JSON: `{"path": …, "data": …}` or `{"path": …, "error": …}`.
 - `subscribe` returns the current value **and pushes every later change**, so the
   menu bar follows the hardware knob and Console's fader live, with no polling.
-- Round-trip latency is ~3 ms.
+- A `get` round-trips in ~3 ms; a `set` is echoed back in ~8 ms (median of 12).
 
 Paths used (device 0; the `MONITOR` output is resolved by name, not hardcoded):
 
@@ -110,7 +125,7 @@ app after every build.
 | | |
 |---|---|
 | **Volume up / down keys** | Monitor level ±1 dB per press; a held key accelerates |
-| Click the icon | Menu with the slider, Mute, Dim |
+| Click the icon | Slider, Mute, Dim, overlay switch, Start at Login |
 | `ApolloMonitor --step up\|down` | Adjust once and exit — needs no Accessibility |
 
 ### The volume keys
