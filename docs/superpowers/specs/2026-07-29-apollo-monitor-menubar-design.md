@@ -90,7 +90,7 @@ with Console.
 - Dropdown (real `NSMenu`) containing a status row, a **horizontal slider**,
   Mute, Dim, Show Volume Overlay, Start at Login, Quit.
 - The Mac's **volume up/down keys** remapped to the monitor level, **1 dB per
-  press**. (⌘⌥↑/↓ was the first attempt; it collided with Rectangle, and the volume
+  press**, and the **mute key** to the Apollo's `Mute` (no repeat on hold). (⌘⌥↑/↓ was the first attempt; it collided with Rectangle, and the volume
   keys are the better gesture anyway since macOS can only offer a greyed-out slider
   for a device with no Core Audio volume.)
 - A **volume overlay** replacing the system HUD the swallowed key suppresses,

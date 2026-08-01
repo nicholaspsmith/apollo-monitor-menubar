@@ -328,8 +328,13 @@ final class EngineClient {
 
     func setMuted(_ muted: Bool) {
         guard let output = monitorOutput, state.isLive else { return }
+        // Optimistic for the same reason as setDb: a second press arriving before
+        // the echo would otherwise compute from a stale value and re-send it.
+        update { $0.muted = muted }
         send(StateTreeCodec.set(Paths.mute(device: deviceIndex, output: output), muted))
     }
+
+    func toggleMute() { setMuted(!state.muted) }
 
     func setDimmed(_ dimmed: Bool) {
         guard let output = monitorOutput, state.isLive else { return }

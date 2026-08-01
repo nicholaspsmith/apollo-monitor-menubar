@@ -13,12 +13,14 @@ final class App: NSObject, NSApplicationDelegate {
     private enum Token {
         static let up = "monitor.up"
         static let down = "monitor.down"
+        static let mute = "monitor.mute"
     }
 
     /// NX media-key codes, from `IOKit/hidsystem/ev_keymap.h`.
     private enum MediaKey {
         static let soundUp: Int32 = 0    // NX_KEYTYPE_SOUND_UP
         static let soundDown: Int32 = 1  // NX_KEYTYPE_SOUND_DOWN
+        static let mute: Int32 = 7       // NX_KEYTYPE_MUTE
     }
 
     private var status: StatusItemController!
@@ -29,9 +31,14 @@ final class App: NSObject, NSApplicationDelegate {
     private var tap: HotkeyTap!
     private var trustTimer: Timer?
 
-    /// Last level seen while live, so the overlay only appears when it moves.
-    /// Tracked even while the overlay is switched off — see `showHUDIfLevelMoved`.
-    private var lastObservedDb: Double?
+    /// What the overlay last reflected, so it only appears on a real change.
+    /// Tracked even while the overlay is switched off — see
+    /// `showOverlayIfStateChanged`.
+    private struct Observed: Equatable {
+        let db: Double
+        let muted: Bool
+    }
+    private var lastObserved: Observed?
     /// Coalesced UI work. Redrawing runs on the next main-queue turn rather than
     /// inside the event-tap callback, so the keystroke is never waiting on drawing.
     private var pendingState: MonitorState?
@@ -80,6 +87,12 @@ final class App: NSObject, NSApplicationDelegate {
                 Binding(token: Token.up, trigger: .mediaKey(MediaKey.soundUp, [.fn])),
                 Binding(token: Token.down, trigger: .mediaKey(MediaKey.soundDown, [])),
                 Binding(token: Token.down, trigger: .mediaKey(MediaKey.soundDown, [.fn])),
+                // Mute must not repeat on hold, or holding it would flap the
+                // output on and off several times a second.
+                Binding(token: Token.mute, trigger: .mediaKey(MediaKey.mute, []),
+                        repeatsOnHold: false),
+                Binding(token: Token.mute, trigger: .mediaKey(MediaKey.mute, [.fn]),
+                        repeatsOnHold: false),
             ],
             onMatch: { [weak self] token in self?.handle(token: token) ?? false }
         )
@@ -133,14 +146,19 @@ final class App: NSObject, NSApplicationDelegate {
     /// it always did, or switching to the built-in speakers would leave them with
     /// no volume keys at all.
     private func handle(token: String) -> Bool {
+        guard output.isUniversalAudio, engine.state.isLive else { return false }
+
+        if token == Token.mute {
+            engine.toggleMute()
+            return true
+        }
+
         let direction: StepDirection
         switch token {
         case Token.up: direction = .up
         case Token.down: direction = .down
         default: return false
         }
-
-        guard output.isUniversalAudio, engine.state.isLive else { return false }
 
         // Everything here is on the event-tap callback, which the system will
         // disable if it dawdles, and which delays the keystroke itself. So this
@@ -177,29 +195,36 @@ final class App: NSObject, NSApplicationDelegate {
             self.sliderView?.apply(
                 tapered: state.tapered, db: state.db, isLive: state.isLive
             )
-            self.showHUDIfLevelMoved(state)
+            self.showOverlayIfStateChanged(state)
         }
     }
 
-    /// The overlay follows the level itself rather than the keypress, so turning the
-    /// knob on the Apollo or moving Console's fader shows the same readout. Driven
-    /// off the dB value because that is what changes on every single press — the
-    /// tapered index only moves every couple of steps.
-    private func showHUDIfLevelMoved(_ state: MonitorState) {
+    /// The overlay follows the state itself rather than the keypress, so turning the
+    /// knob on the Apollo, moving Console's fader, or muting from the menu all show
+    /// the same readout. Driven off dB rather than the tapered position because dB
+    /// changes on every single press, and off mute because muting changes no level
+    /// at all — without it the mute key would have no visible effect beyond the
+    /// menu-bar arc going grey.
+    private func showOverlayIfStateChanged(_ state: MonitorState) {
         guard state.isLive else { return }
 
-        // Track the level even while the overlay is switched off, or the record
-        // goes stale: changes made with it off would leave the last *shown* value
-        // behind, and coming back to that value later would read as "no change"
-        // and show nothing.
-        let previous = lastObservedDb
-        lastObservedDb = state.db
+        // Track even while the overlay is switched off, or the record goes stale:
+        // changes made with it off would leave the last *shown* value behind, and
+        // coming back to that value later would read as "no change" and show
+        // nothing.
+        let previous = lastObserved
+        lastObserved = Observed(db: state.db, muted: state.muted)
 
         guard overlayPreference.isEnabled else { return }
-        guard let previous else { return }  // first reading, not a change
-        guard previous != state.db, Date() >= hudSuppressedUntil else { return }
+        guard let previous, previous != lastObserved else { return }
+        guard Date() >= hudSuppressedUntil else { return }
 
-        hud.show(deviceName: state.deviceName, db: state.db, fraction: state.tapered)
+        hud.show(
+            deviceName: state.deviceName,
+            db: state.db,
+            fraction: state.tapered,
+            muted: state.muted
+        )
     }
 
     // MARK: - Icon + menu

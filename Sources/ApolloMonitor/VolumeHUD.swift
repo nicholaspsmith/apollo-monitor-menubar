@@ -166,7 +166,7 @@ final class VolumeHUD {
     /// `fraction` is knob travel (0...1) for the bar; `db` is the precise level,
     /// which is what actually moves on every press — the bar is quantised to the
     /// engine's coarse 1/54 reporting grid, so the number carries the fine detail.
-    func show(deviceName: String?, db: Double, fraction: Double) {
+    func show(deviceName: String?, db: Double, fraction: Double, muted: Bool = false) {
         let now = Date()
         if OverlayRefresh.needsFreshPanel(lastShownAt: lastShownAt, now: now) {
             rebuildPanel(reason: "unused for \(Int(now.timeIntervalSince(lastShownAt)))s")
@@ -174,13 +174,16 @@ final class VolumeHUD {
         lastShownAt = now
 
         nameLabel.stringValue = deviceName ?? "Monitor"
-        valueLabel.stringValue = LevelDb.label(db)
+        // Muted keeps the bar where the level actually is but dims it, so the
+        // overlay says "silenced at this level" rather than "turned down".
+        valueLabel.stringValue = muted ? "Muted" : LevelDb.label(db)
 
         let clamped = max(0, min(1, fraction))
         fill.frame = NSRect(
             x: 0, y: 0, width: track.frame.width * clamped, height: Layout.barHeight
         )
-        icon.image = symbol(named: symbolName(for: clamped))
+        fill.layer?.opacity = muted ? 0.3 : 1
+        icon.image = symbol(named: muted ? "speaker.slash.fill" : symbolName(for: clamped))
 
         present()
 

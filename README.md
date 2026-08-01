@@ -125,16 +125,23 @@ app after every build.
 | | |
 |---|---|
 | **Volume up / down keys** | Monitor level ±1 dB per press; a held key accelerates |
+| **Mute key** | Mutes and unmutes the monitor output |
 | Click the icon | Slider, Mute, Dim, overlay switch, Start at Login |
 | `ApolloMonitor --step up\|down` | Adjust once and exit — needs no Accessibility |
 
 ### The volume keys
 
-The Mac's own volume keys are taken over rather than some chord. On an Apollo they
-otherwise do nothing useful: because the device has no Core Audio volume, pressing
-them just raises the system HUD with a **greyed-out slider you cannot move**.
-Swallowing the key suppresses that HUD too, so the only feedback is the menu-bar
-level arc (which is live).
+The Mac's own volume and mute keys are taken over rather than some chord. On an
+Apollo they otherwise do nothing useful: because the device has no Core Audio
+volume, pressing them just raises the system HUD with a **greyed-out slider you
+cannot move**. Swallowing the key suppresses that HUD too, so feedback comes from
+the menu-bar level arc and the overlay.
+
+The mute key toggles the Apollo's `Mute`, and is deliberately the one key that does
+*not* repeat on hold — repeating it would flap the output on and off several times
+a second. Muting changes no level, so the overlay is driven by mute state as well
+as by dB; without that the mute key's only visible effect would be the menu-bar arc
+turning grey.
 
 ### The overlay
 
@@ -189,8 +196,9 @@ volume and macOS handles them properly. The menu says so when it is passing them
 through. They also pass through whenever the engine is unreachable, so the keys
 are never dead.
 
-Bound to `NX_KEYTYPE_SOUND_UP` / `_DOWN` (0 and 1), with and without the `fn`
-modifier, since some keyboards report the function layer on media keys.
+Bound to `NX_KEYTYPE_SOUND_UP` / `_DOWN` / `MUTE` (0, 1 and 7), each with and
+without the `fn` modifier, since some keyboards report the function layer on media
+keys.
 
 This needs **Accessibility** permission (it is a `CGEventTap`); the menu and
 slider do not. `--step` is the escape hatch if you would rather not grant it:
