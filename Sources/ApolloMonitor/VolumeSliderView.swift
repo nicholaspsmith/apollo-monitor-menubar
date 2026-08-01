@@ -69,7 +69,7 @@ final class VolumeSliderView: NSView {
         slider.minValue = 0
         slider.maxValue = 1
         slider.doubleValue = self.tapered
-        slider.isEnabled = isLive
+        applyLiveAppearance()
         // Covers value changes that do not come through `mouseDown`: VoiceOver's
         // increment/decrement, and anything else driving the control directly.
         slider.target = self
@@ -105,8 +105,15 @@ final class VolumeSliderView: NSView {
         db = newDb
         isLive = newIsLive
         slider.doubleValue = tapered
-        slider.isEnabled = newIsLive
+        applyLiveAppearance()
         refreshLabel()
+    }
+
+    /// Full-strength while the Apollo is reachable, muted when it is not — the
+    /// slider should not look inert just because it sits in a menu.
+    private func applyLiveAppearance() {
+        slider.isEnabled = isLive
+        slider.trackFillColor = isLive ? .controlAccentColor : nil
     }
 
     private func refreshLabel() {
@@ -114,7 +121,7 @@ final class VolumeSliderView: NSView {
         // level by a whole dB, which the percentage is too coarse to reflect.
         readoutLabel.stringValue =
             "\(KnobPosition.percent(tapered: tapered))% · \(LevelDb.label(db))"
-        readoutLabel.textColor = isLive ? .secondaryLabelColor : .tertiaryLabelColor
+        readoutLabel.textColor = isLive ? .labelColor : .tertiaryLabelColor
     }
 
     // MARK: - Tracking

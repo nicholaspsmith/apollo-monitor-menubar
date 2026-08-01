@@ -225,7 +225,12 @@ final class App: NSObject, NSApplicationDelegate {
     private func buildMenu(_ menu: NSMenu) {
         let state = engine.state
 
-        menu.addItem(disabledItem(state.statusLine))
+        // Take over enabling. AppKit's automatic version disables anything with a
+        // nil action, which greys out the status line and the slider row even when
+        // the Apollo is connected and both are perfectly current.
+        menu.autoenablesItems = false
+
+        menu.addItem(infoItem(state.statusLine, enabled: state.isLive))
 
         let sliderItem = NSMenuItem()
         let slider = VolumeSliderView(
@@ -245,6 +250,7 @@ final class App: NSObject, NSApplicationDelegate {
             )
         }
         sliderItem.view = slider
+        sliderItem.isEnabled = state.isLive
         sliderView = slider
         menu.addItem(sliderItem)
 
@@ -267,7 +273,8 @@ final class App: NSObject, NSApplicationDelegate {
             // Otherwise "my volume keys stopped controlling the Apollo" is a
             // mystery with no visible cause.
             menu.addItem(.separator())
-            menu.addItem(disabledItem("Volume keys: system output isn't the Apollo"))
+            // Genuinely an inactive state, so this one stays muted.
+            menu.addItem(infoItem("Volume keys: system output isn't the Apollo", enabled: false))
         }
 
         menu.addItem(.separator())
@@ -279,8 +286,12 @@ final class App: NSObject, NSApplicationDelegate {
         menu.addItem(actionItem("Quit Apollo Monitor", #selector(quit), key: "q"))
     }
 
-    private func disabledItem(_ title: String) -> NSMenuItem {
-        NSMenuItem(title: title, action: nil, keyEquivalent: "")
+    /// A non-clickable row. `enabled` controls only how it draws — full-strength
+    /// when it is reporting something live, muted when it is not.
+    private func infoItem(_ title: String, enabled: Bool) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        item.isEnabled = enabled
+        return item
     }
 
     private func actionItem(_ title: String, _ selector: Selector, key: String = "") -> NSMenuItem {
