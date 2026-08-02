@@ -31,6 +31,18 @@ final class App: NSObject, NSApplicationDelegate {
     private var tap: HotkeyTap!
     private var trustTimer: Timer?
 
+    /// Folded-in UA Watchdog surface (a submenu, not a separate app): the launchd
+    /// controller, the last status shown (so the toggle knows enable vs disable),
+    /// and a clock formatter for the "last kill" time.
+    private let watchdog = WatchdogController()
+    private var watchdogStatus: WatchdogStatus?
+    private let clockFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+
     /// What the overlay last reflected, so it only appears on a real change.
     /// Tracked even while the overlay is switched off — see
     /// `showOverlayIfStateChanged`.
@@ -311,6 +323,10 @@ final class App: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
+        menu.addItem(watchdogMenuItem())
+
+        menu.addItem(.separator())
+
         let overlay = actionItem("Show Volume Overlay", #selector(toggleOverlay))
         overlay.state = overlayPreference.isEnabled ? .on : .off
         menu.addItem(overlay)
@@ -336,6 +352,57 @@ final class App: NSObject, NSApplicationDelegate {
         return item
     }
 
+    // MARK: - UA Watchdog submenu
+
+    /// The folded-in UA Watchdog surface: its state on the parent item's shield
+    /// icon, and a submenu with details + a persistent Disable/Enable toggle. State
+    /// is read fresh here (once per menu open), so nothing polls while the menu is
+    /// closed.
+    private func watchdogMenuItem() -> NSMenuItem {
+        let status = watchdog.status()
+        watchdogStatus = status
+
+        let item = NSMenuItem(title: "UA Watchdog", action: nil, keyEquivalent: "")
+        item.isEnabled = true
+        item.image = WatchdogIcon.image(for: status.state)
+
+        let submenu = NSMenu()
+        submenu.autoenablesItems = false
+        submenu.addItem(infoItem(watchdogHeader(status), enabled: status.state != .disabled))
+
+        let mono = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        if let kill = status.lastKill {
+            let row = NSMenuItem()
+            row.view = MenuBuilder.textView(
+                "Last kill: \(kill.label) \(clockFormatter.string(from: kill.date))", font: mono
+            )
+            submenu.addItem(row)
+        }
+        let killsRow = NSMenuItem()
+        killsRow.view = MenuBuilder.textView("Kills today: \(status.killsToday)", font: mono)
+        submenu.addItem(killsRow)
+
+        submenu.addItem(.separator())
+        submenu.addItem(actionItem(status.isEnabled ? "Disable watchdog" : "Enable watchdog",
+                                   #selector(toggleWatchdog)))
+        submenu.addItem(actionItem("Show log…", #selector(showWatchdogLog)))
+
+        item.submenu = submenu
+        return item
+    }
+
+    private func watchdogHeader(_ status: WatchdogStatus) -> String {
+        switch status.state {
+        case .active:
+            if let age = status.heartbeatAge { return "✓ UA Watchdog active · checked \(RelativeTime.short(age)) ago" }
+            return "✓ UA Watchdog active"
+        case .disabled:
+            return "○ UA Watchdog disabled"
+        case .problem(let reason):
+            return "⚠ UA Watchdog: \(reason)"
+        }
+    }
+
     // MARK: - Menu selectors
 
     @objc private func toggleMute() { engine.setMuted(!engine.state.muted) }
@@ -352,6 +419,18 @@ final class App: NSObject, NSApplicationDelegate {
         // Switching it off while it happens to be on screen should take it down
         // now, not leave it sitting there for its remaining second.
         if !overlayPreference.isEnabled { hud.dismiss() }
+    }
+
+    @objc private func toggleWatchdog() {
+        watchdog.setEnabled(!(watchdogStatus?.isEnabled ?? true))
+    }
+
+    @objc private func showWatchdogLog() {
+        let path = WatchdogPaths.log(home: NSHomeDirectory())
+        let url = FileManager.default.fileExists(atPath: path)
+            ? URL(fileURLWithPath: path)
+            : URL(fileURLWithPath: (path as NSString).deletingLastPathComponent)
+        NSWorkspace.shared.open(url)
     }
 
     @objc private func toggleLogin() { LoginItem.toggle() }
