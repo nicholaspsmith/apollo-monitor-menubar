@@ -5,6 +5,7 @@ final class WatchdogStatusTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_754_040_000)
 
     private func build(
+        installed: Bool = true,
         bootstrapped: Bool = true,
         exit: Int? = 0,
         disabled: Bool = false,
@@ -12,6 +13,7 @@ final class WatchdogStatusTests: XCTestCase {
         log: String = ""
     ) -> WatchdogStatus {
         WatchdogStatusBuilder.build(
+            isInstalled: installed,
             isBootstrapped: bootstrapped,
             lastExitCode: exit,
             isDisabled: disabled,
@@ -35,6 +37,21 @@ final class WatchdogStatusTests: XCTestCase {
     func testNotBootstrappedIsDisabled() {
         // Booted out (not loaded) reads as off even if not explicitly `disable`d.
         XCTAssertEqual(build(bootstrapped: false).state, .disabled)
+    }
+
+    func testMissingPlistIsNotInstalled() {
+        // No plist ⇒ nothing to bootstrap. This must NOT read as `.disabled`:
+        // that would make a never-installed agent look like a deliberate choice,
+        // and offer an Enable action that cannot succeed.
+        XCTAssertEqual(build(installed: false, bootstrapped: false).state, .notInstalled)
+        XCTAssertFalse(build(installed: false, bootstrapped: false).isEnabled)
+        XCTAssertFalse(build(installed: false, bootstrapped: false).isToggleable)
+    }
+
+    func testNotInstalledBeatsEveryOtherSignal() {
+        // Stale launchd state can linger after a plist is deleted; absence wins.
+        XCTAssertEqual(build(installed: false, exit: 1, heartbeatAgo: 600).state, .notInstalled)
+        XCTAssertEqual(build(installed: false, disabled: true).state, .notInstalled)
     }
 
     func testNonZeroExitIsProblem() {

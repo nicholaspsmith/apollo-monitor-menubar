@@ -13,6 +13,10 @@ enum WatchdogIcon {
             symbol = "checkmark.shield.fill"; color = nil
         case .disabled:
             symbol = "shield.slash"; color = .systemGray
+        case .notInstalled:
+            // Distinct from `disabled`'s slash: nothing was turned off here, the
+            // agent simply isn't there.
+            symbol = "xmark.shield"; color = .systemGray
         case .problem:
             symbol = "exclamationmark.shield.fill"; color = .systemRed
         }

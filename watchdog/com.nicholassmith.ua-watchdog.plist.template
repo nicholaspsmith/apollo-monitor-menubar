@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Template: install-watchdog.sh substitutes __HOME__ for the real $HOME and
+     writes the result to ~/Library/LaunchAgents/. Do not install this file
+     directly — launchd will not expand a placeholder path. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nicholassmith.ua-watchdog</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>__HOME__/.local/bin/ua-watchdog.sh</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StartInterval</key>
+    <integer>60</integer>
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>LowPriorityIO</key>
+    <true/>
+    <key>Nice</key>
+    <integer>10</integer>
+    <key>StandardErrorPath</key>
+    <string>/tmp/ua-watchdog.err.log</string>
+</dict>
+</plist>

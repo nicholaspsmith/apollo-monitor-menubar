@@ -368,7 +368,7 @@ final class App: NSObject, NSApplicationDelegate {
 
         let submenu = NSMenu()
         submenu.autoenablesItems = false
-        submenu.addItem(infoItem(watchdogHeader(status), enabled: status.state != .disabled))
+        submenu.addItem(infoItem(watchdogHeader(status), enabled: status.isEnabled))
 
         let mono = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
         if let kill = status.lastKill {
@@ -383,8 +383,11 @@ final class App: NSObject, NSApplicationDelegate {
         submenu.addItem(killsRow)
 
         submenu.addItem(.separator())
-        submenu.addItem(actionItem(status.isEnabled ? "Disable watchdog" : "Enable watchdog",
-                                   #selector(toggleWatchdog)))
+        let toggle = actionItem(status.isEnabled ? "Disable watchdog" : "Enable watchdog",
+                                #selector(toggleWatchdog))
+        // With no plist there is nothing to bootstrap, so offer no action to click.
+        toggle.isEnabled = status.isToggleable
+        submenu.addItem(toggle)
         submenu.addItem(actionItem("Show log…", #selector(showWatchdogLog)))
 
         item.submenu = submenu
@@ -398,6 +401,8 @@ final class App: NSObject, NSApplicationDelegate {
             return "✓ UA Watchdog active"
         case .disabled:
             return "○ UA Watchdog disabled"
+        case .notInstalled:
+            return "○ UA Watchdog not installed — run ./install.sh"
         case .problem(let reason):
             return "⚠ UA Watchdog: \(reason)"
         }
@@ -422,7 +427,22 @@ final class App: NSObject, NSApplicationDelegate {
     }
 
     @objc private func toggleWatchdog() {
-        watchdog.setEnabled(!(watchdogStatus?.isEnabled ?? true))
+        let wanted = !(watchdogStatus?.isEnabled ?? true)
+        guard let failedStep = watchdog.setEnabled(wanted) else { return }
+
+        // The menu re-reads status() on every open, so a failure recorded in the
+        // model would be overwritten before it could be seen. Say it out loud.
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = wanted ? "Couldn't enable the UA Watchdog"
+                                   : "Couldn't disable the UA Watchdog"
+        alert.informativeText = """
+        `launchctl \(failedStep)` failed for \(WatchdogPaths.label).
+
+        If the agent was never installed, run ./install.sh from the \
+        apollo-monitor-menubar checkout.
+        """
+        alert.runModal()
     }
 
     @objc private func showWatchdogLog() {
