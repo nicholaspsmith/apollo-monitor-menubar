@@ -8,6 +8,10 @@ APP_NAME="Apollo Monitor.app"
 
 "$SRC_DIR/scripts/build-app.sh"
 
+# The app ships a "UA Watchdog" submenu that reports on and toggles this agent,
+# so install the agent too — otherwise that menu controls nothing.
+"$SRC_DIR/watchdog/install-watchdog.sh"
+
 mkdir -p "$HOME/Applications"
 ln -sfn "$SRC_DIR/build/$APP_NAME" "$HOME/Applications/$APP_NAME"
 echo "Linked $HOME/Applications/$APP_NAME -> $SRC_DIR/build/$APP_NAME"
@@ -27,6 +31,11 @@ First-run setup
      with − and re-add it: an ad-hoc rebuild changes the code hash the grant is
      keyed to, and a stale entry looks enabled while doing nothing.
   2. Optional: menu ▸ Start at Login.
+
+The UA Watchdog LaunchAgent was installed alongside the app. It checks every 60s
+for runaway Universal Audio processes, kills them, and restarts the mixer engine
+so audio comes back. Turn it off any time: menu ▸ UA Watchdog ▸ Disable watchdog
+(that choice survives reboots and re-running this installer).
 
 Recommended, once: ../StatusItemKit/scripts/setup-signing.sh
 Without a stable signing identity this bundle is ad-hoc signed, so every rebuild

@@ -126,7 +126,7 @@ app after every build.
 |---|---|
 | **Volume up / down keys** | Monitor level ±1 dB per press; a held key accelerates |
 | **Mute key** | Mutes and unmutes the monitor output |
-| Click the icon | Slider, Mute, Dim, overlay switch, Start at Login |
+| Click the icon | Slider, Mute, Dim, overlay switch, [UA Watchdog](#ua-watchdog), Start at Login |
 | `ApolloMonitor --step up\|down` | Adjust once and exit — needs no Accessibility |
 
 ### The volume keys
@@ -204,6 +204,47 @@ This needs **Accessibility** permission (it is a `CGEventTap`); the menu and
 slider do not. `--step` is the escape hatch if you would rather not grant it:
 bind it from Shortcuts, Karabiner, or anything else that can run a command.
 
+## UA Watchdog
+
+`./install.sh` also installs a small LaunchAgent, `com.nicholassmith.ua-watchdog`,
+which the menu's **UA Watchdog** submenu reports on and toggles. It exists because
+UA's helper processes occasionally wedge at 100% CPU and take Apollo audio down
+with them — most often an orphaned `UA Mixer Helper` left behind when Console
+quits.
+
+Every 60 seconds it scans for Universal Audio processes and kills the ones that
+are stuck:
+
+| Process | Bar |
+|---|---|
+| `UA Mixer Helper`, orphaned (PPID 1) | ≥ 80% CPU — killed on sight |
+| `UA Mixer Engine` (real-time, so a higher bar) | ≥ 98% CPU across 3 ticks |
+| Everything else UA (Console, UA Connect, UAD Meter, helpers) | ≥ 90% CPU across 2 ticks |
+
+If the process it killed was on the audio path it then `launchctl kickstart`s the
+mixer engine, so sound comes back without you doing anything, and posts a
+notification. Everything runs as you — no sudo, since UA's processes are
+user-owned.
+
+| File | |
+|---|---|
+| `~/.local/bin/ua-watchdog.sh` | the script (copied from `watchdog/`) |
+| `~/Library/LaunchAgents/com.nicholassmith.ua-watchdog.plist` | the agent |
+| `~/.local/state/ua-watchdog.log` | appended only on WARN/KILL — **Show log…** opens it |
+| `~/.local/state/ua-watchdog.heartbeat` | epoch of the last tick; if it goes stale the submenu turns red |
+
+Turn it off with **UA Watchdog ▸ Disable watchdog**. That is persistent: it
+survives reboots, and re-running `./install.sh` refreshes the script and plist
+but leaves it disabled. Thresholds are env-overridable (`UA_WD_CPU`,
+`UA_WD_CPU_ENGINE`, `UA_WD_ORPHAN_CPU`, `UA_WD_TICKS`, `UA_WD_TICKS_ENGINE`) at
+the top of the script.
+
+To install or reinstall it on its own, without rebuilding the app:
+
+```sh
+./watchdog/install-watchdog.sh
+```
+
 ## Requirements
 
 macOS 13+, an Apollo with UA's software installed. Tested against an Apollo Twin
@@ -228,6 +269,8 @@ every level change. (`log` is a zsh builtin — the absolute path matters.)
 ## Design notes
 
 [`docs/superpowers/specs/2026-07-29-apollo-monitor-menubar-design.md`](docs/superpowers/specs/2026-07-29-apollo-monitor-menubar-design.md)
+— and, for the watchdog,
+[`2026-08-08-ua-watchdog-vendoring-design.md`](docs/superpowers/specs/2026-08-08-ua-watchdog-vendoring-design.md)
 
 ## License
 

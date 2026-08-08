@@ -16,6 +16,7 @@ struct WatchdogController {
         let disabledText = Shell.run("/bin/launchctl", ["print-disabled", WatchdogPaths.guiDomain(uid: uid)]) ?? ""
 
         return WatchdogStatusBuilder.build(
+            isInstalled: FileManager.default.fileExists(atPath: WatchdogPaths.plist(home: home)),
             isBootstrapped: printText != nil,
             lastExitCode: printText.flatMap(LaunchctlParser.lastExitCode(fromPrint:)),
             isDisabled: LaunchctlParser.isDisabled(label: WatchdogPaths.label, fromPrintDisabled: disabledText),
@@ -27,16 +28,24 @@ struct WatchdogController {
 
     /// Persistently enable or disable the agent. Disable also `disable`s it so it
     /// stays off across reboots; enable re-`enable`s and bootstraps it back in.
-    func setEnabled(_ enabled: Bool) {
+    ///
+    /// Returns the name of the `launchctl` step that failed, or nil on success.
+    /// The caller is expected to surface a failure: silently staying in the old
+    /// state leaves no way to tell a broken install from a mis-click.
+    func setEnabled(_ enabled: Bool) -> String? {
         let service = WatchdogPaths.serviceTarget(uid: uid)
         let domain = WatchdogPaths.guiDomain(uid: uid)
         if enabled {
-            _ = Shell.run("/bin/launchctl", ["enable", service])
-            _ = Shell.run("/bin/launchctl", ["bootstrap", domain, WatchdogPaths.plist(home: home)])
+            guard Shell.run("/bin/launchctl", ["enable", service]) != nil else { return "enable" }
+            guard Shell.run("/bin/launchctl", ["bootstrap", domain, WatchdogPaths.plist(home: home)]) != nil
+            else { return "bootstrap" }
         } else {
-            _ = Shell.run("/bin/launchctl", ["bootout", service])   // may 'not loaded' — fine
-            _ = Shell.run("/bin/launchctl", ["disable", service])
+            // bootout legitimately fails with "not loaded" when it's already out,
+            // so only `disable` — the step that makes it stick — is a real failure.
+            _ = Shell.run("/bin/launchctl", ["bootout", service])
+            guard Shell.run("/bin/launchctl", ["disable", service]) != nil else { return "disable" }
         }
+        return nil
     }
 
     private func readHeartbeat() -> Date? {

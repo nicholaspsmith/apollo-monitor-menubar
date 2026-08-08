@@ -4,6 +4,7 @@ import Foundation
 public enum WatchdogState: Equatable {
     case active                 // loaded, enabled, healthy
     case disabled               // booted out / disabled — deliberately off
+    case notInstalled           // no plist — never installed, or it was removed
     case problem(String)        // loaded but unhealthy (bad exit, or gone quiet)
 }
 
@@ -23,24 +24,13 @@ public struct WatchdogStatus: Equatable {
     }
 
     /// True unless deliberately turned off — drives the Disable/Enable menu label.
-    public var isEnabled: Bool { state != .disabled }
+    /// A missing agent is not "enabled": there is nothing to disable.
+    public var isEnabled: Bool { state != .disabled && state != .notInstalled }
 
-    /// One-line plain-text summary for the `--status` CLI, e.g.
-    /// "active · checked 12s ago · last kill UA Mixer Helper · 2 today".
-    public var summaryLine: String {
-        switch state {
-        case .disabled:
-            return "disabled"
-        case .problem(let reason):
-            return "problem: \(reason)"
-        case .active:
-            var parts = ["active"]
-            if let age = heartbeatAge { parts.append("checked \(RelativeTime.short(age)) ago") }
-            if let kill = lastKill { parts.append("last kill \(kill.label)") }
-            parts.append("\(killsToday) today")
-            return parts.joined(separator: " · ")
-        }
-    }
+    /// Whether toggling can do anything. With no plist, `launchctl bootstrap` has
+    /// no file to load, so the menu greys the toggle out rather than offering an
+    /// action that always fails.
+    public var isToggleable: Bool { state != .notInstalled }
 }
 
 public enum WatchdogStatusBuilder {
@@ -49,6 +39,7 @@ public enum WatchdogStatusBuilder {
     public static let staleHeartbeatThreshold: TimeInterval = 210
 
     /// - Parameters:
+    ///   - isInstalled: the LaunchAgent plist exists on disk.
     ///   - isBootstrapped: `launchctl print <service>` succeeded (agent is loaded).
     ///   - lastExitCode: parsed from that print (nil ⇒ hasn't completed a run).
     ///   - isDisabled: from `print-disabled`.
@@ -56,6 +47,7 @@ public enum WatchdogStatusBuilder {
     ///   - now: current time.
     ///   - log: full text of the action log.
     public static func build(
+        isInstalled: Bool,
         isBootstrapped: Bool,
         lastExitCode: Int?,
         isDisabled: Bool,
@@ -67,7 +59,12 @@ public enum WatchdogStatusBuilder {
         let age = heartbeat.map { now.timeIntervalSince($0) }
 
         let state: WatchdogState
-        if isDisabled || !isBootstrapped {
+        // Absence is checked first and beats every other signal: launchd can still
+        // report a service whose plist was deleted, and "off because you said so"
+        // must not be confused with "was never here".
+        if !isInstalled {
+            state = .notInstalled
+        } else if isDisabled || !isBootstrapped {
             state = .disabled
         } else if let code = lastExitCode, code != 0 {
             state = .problem("last run exited \(code)")
