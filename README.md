@@ -128,6 +128,7 @@ app after every build.
 | **Mute key** | Mutes and unmutes the monitor output |
 | Click the icon | Slider, Mute, Dim, overlay switch, [UA Watchdog](#ua-watchdog), Start at Login |
 | `ApolloMonitor --step up\|down` | Adjust once and exit — needs no Accessibility |
+| `ApolloMonitor --login on\|off\|status` | Start at Login, from the shell — what `install.sh` calls |
 
 ### The volume keys
 
