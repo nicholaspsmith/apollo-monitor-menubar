@@ -16,6 +16,16 @@ mkdir -p "$HOME/Applications"
 ln -sfn "$SRC_DIR/build/$APP_NAME" "$HOME/Applications/$APP_NAME"
 echo "Linked $HOME/Applications/$APP_NAME -> $SRC_DIR/build/$APP_NAME"
 
+# Register Start at Login. Without this the app only runs until the next reboot,
+# and a menu-bar app that quietly fails to come back is easy to miss for weeks.
+# SMAppService can only register the calling process's own bundle, so this has
+# to run the installed binary rather than call launchctl.
+if "$HOME/Applications/$APP_NAME/Contents/MacOS/ApolloMonitor" --login on >/dev/null; then
+    echo "Start at Login: on"
+else
+    echo "Start at Login: could not register (turn it on from the menu)" >&2
+fi
+
 open "$HOME/Applications/$APP_NAME"
 
 cat <<'EOF'

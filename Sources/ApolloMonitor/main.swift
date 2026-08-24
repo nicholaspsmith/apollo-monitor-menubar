@@ -491,12 +491,44 @@ func runHeadlessStep(_ direction: StepDirection) {
     exit(1)
 }
 
+/// `ApolloMonitor --login on|off|status` registers, unregisters, or reports
+/// Start at Login and exits. This is the same `SMAppService.mainApp` switch the
+/// menu item flips — exposed for `install.sh`, since SMAppService can only
+/// register the calling process's own bundle, so nothing outside the app can
+/// turn it on.
+func runHeadlessLogin(_ command: LoginCommand) -> Never {
+    switch command {
+    case .status:
+        print(LoginItem.isEnabled ? "on" : "off")
+        exit(0)
+    case .enable, .disable:
+        let enable = command == .enable
+        do {
+            try LoginItem.setEnabled(enable)
+            print(enable ? "on" : "off")
+            exit(0)
+        } catch {
+            FileHandle.standardError.write(
+                Data("ApolloMonitor: couldn't turn Start at Login \(enable ? "on" : "off") — \(error.localizedDescription)\n".utf8))
+            exit(1)
+        }
+    }
+}
+
 // MARK: - Entry point
 
 let arguments = CommandLine.arguments
 if arguments.count >= 2, arguments[1] == "--step" {
     let direction: StepDirection = arguments.count > 2 && arguments[2] == "down" ? .down : .up
     runHeadlessStep(direction)
+}
+
+switch LoginRequest.parse(arguments: arguments) {
+case .absent: break
+case .command(let command): runHeadlessLogin(command)
+case .unrecognized(let value):
+    FileHandle.standardError.write(Data("ApolloMonitor: unknown --login value '\(value)'\n\(LoginRequest.usage)\n".utf8))
+    exit(2)
 }
 
 let app = NSApplication.shared
