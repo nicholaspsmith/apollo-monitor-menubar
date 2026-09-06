@@ -24,6 +24,9 @@ final class App: NSObject, NSApplicationDelegate {
     }
 
     private var status: StatusItemController!
+    /// Gives up this item's width while Curtain reveals its hidden block, so the
+    /// block has room to land; restores itself from the TTL if Curtain vanishes.
+    private var yieldClient: YieldClient!
     private let engine = EngineClient()
     private let output = DefaultOutputWatcher()
     private let hud = VolumeHUD()
@@ -82,6 +85,8 @@ final class App: NSObject, NSApplicationDelegate {
             onBuildMenu: { [weak self] menu in self?.buildMenu(menu) }
         )
         status.start()
+        yieldClient = YieldClient(item: status)
+        yieldClient.start()
 
         engine.onChange = { [weak self] state in self?.scheduleUIRefresh(state) }
         engine.start()
