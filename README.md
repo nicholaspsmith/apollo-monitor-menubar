@@ -2,6 +2,8 @@
 
 <p align="center"><img src="docs/mascot.png" width="160" alt="Apollo Monitor mascot, from the Menubarn widget library"></p>
 
+<p align="center">Part of the <a href="https://widgets.nicksmith.software">Menubarn</a> widget library.</p>
+
 ![The Apollo Monitor menu](screenshots/menu.png)
 
 A macOS menu-bar control for the **monitor output level of a Universal Audio
