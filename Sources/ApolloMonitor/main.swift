@@ -60,6 +60,17 @@ final class App: NSObject, NSApplicationDelegate {
     private var uiRefreshScheduled = false
     /// What the menu-bar icon was last drawn from, to skip identical redraws.
     private var lastIconKey: String?
+
+    /// Rocket mascot (flame = level) or the plain arc. Persisted.
+    enum IconStyle: String, CaseIterable {
+        case rocket, arc
+        var title: String { self == .rocket ? "Rocket" : "Arc" }
+        private static let key = "iconStyle"
+        static var current: IconStyle {
+            get { UserDefaults.standard.string(forKey: key).flatMap(IconStyle.init) ?? .rocket }
+            set { UserDefaults.standard.set(newValue.rawValue, forKey: key) }
+        }
+    }
     /// Cadence tracking for hold acceleration.
     private var lastPressAt: Date?
     private var consecutiveRepeats = 0
@@ -254,7 +265,7 @@ final class App: NSObject, NSApplicationDelegate {
         // The arc is 18 points across, so changes finer than this cannot show.
         // Skipping identical redraws matters during a held key, when the level
         // changes several times a second.
-        let key = "\(Int((state.tapered * 200).rounded()))|\(live)"
+        let key = "\(Int((state.tapered * 200).rounded()))|\(live)|\(IconStyle.current.rawValue)"
         guard key != lastIconKey else { return }
         lastIconKey = key
 
@@ -265,6 +276,10 @@ final class App: NSObject, NSApplicationDelegate {
         //
         // Grey when the level cannot be changed — engine down, Apollo offline,
         // muted, or Accessibility not yet granted. The menu says which.
+        if IconStyle.current == .rocket {
+            status.setIcon(CharacterIcon.rocket(level: fraction, online: live))
+            return
+        }
         status.setIcon(MeterIcon.arc(
             fraction: fraction,
             color: live ? .systemGreen : .systemGray
@@ -335,6 +350,18 @@ final class App: NSObject, NSApplicationDelegate {
         let overlay = actionItem("Show Volume Overlay", #selector(toggleOverlay))
         overlay.state = overlayPreference.isEnabled ? .on : .off
         menu.addItem(overlay)
+
+        let iconHeader = NSMenuItem(title: "Icon", action: nil, keyEquivalent: "")
+        let iconSub = NSMenu()
+        for style in IconStyle.allCases {
+            let item = NSMenuItem(title: style.title, action: #selector(pickIconStyle(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = style.rawValue
+            item.state = style == IconStyle.current ? .on : .off
+            iconSub.addItem(item)
+        }
+        iconHeader.submenu = iconSub
+        menu.addItem(iconHeader)
 
         let login = actionItem("Start at Login", #selector(toggleLogin))
         login.state = LoginItem.isEnabled ? .on : .off
@@ -456,6 +483,13 @@ final class App: NSObject, NSApplicationDelegate {
             ? URL(fileURLWithPath: path)
             : URL(fileURLWithPath: (path as NSString).deletingLastPathComponent)
         NSWorkspace.shared.open(url)
+    }
+
+    @objc private func pickIconStyle(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let style = IconStyle(rawValue: raw) else { return }
+        IconStyle.current = style
+        lastIconKey = nil
+        refreshIcon()
     }
 
     @objc private func toggleLogin() { LoginItem.toggle() }
