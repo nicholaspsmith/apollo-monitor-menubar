@@ -26,7 +26,7 @@ enum WatchdogIcon {
             config = config.applying(NSImage.SymbolConfiguration(paletteColors: [color]))
         }
 
-        let base = NSImage(systemSymbolName: symbol, accessibilityDescription: "UA Watchdog status")
+        let base = NSImage(systemSymbolName: symbol, accessibilityDescription: "Mixer Watchdog status")
         let image = base?.withSymbolConfiguration(config) ?? base ?? NSImage()
         image.isTemplate = (color == nil)
         return image

@@ -6,8 +6,8 @@
 
 ![The Apollo Monitor menu](screenshots/menu.png)
 
-A macOS menu-bar control for the **monitor output level of a Universal Audio
-Apollo**: a live level arc in the menu bar, a horizontal slider, connection
+A macOS menu-bar control for the **monitor output level of an Apollo audio
+interface**: a live level arc in the menu bar, a horizontal slider, connection
 status, the Mac's **volume keys** remapped to drive it in 1 dB steps, and a volume
 overlay to replace the one macOS cannot make work.
 
@@ -31,11 +31,11 @@ Built on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) and
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
-An Apollo Twin's face: the monitor knob with its ring of ticks is the mouth,
+An Apollo interface's face: the monitor knob with its ring of ticks is the mouth,
 two square buttons above it are the eyes. The ticks light green with the
 monitor level, from bottom-left over the top to bottom-right, shown above at
 15%, 50%, 90% and offline. It follows the level live, including changes made
-on the Apollo's own knob or in Console.
+on the interface's own knob or in its Console app.
 
 It turns **grey whenever the level cannot be changed** — the mixer engine is not
 running, the Apollo is offline, the output is muted, or Accessibility has not been
@@ -51,8 +51,8 @@ The Apollo exposes **no volume control to Core Audio at all** — no
 `kAudioDevicePropertyVolumeScalar`, no virtual main volume, and
 `osascript -e 'get volume settings'` reports `output volume: missing value`. So
 the macOS volume keys, `set volume`, and every hardware-volume utility are
-useless on it, even when the Apollo is the default output device. UAD Console
-also ships no AppleScript dictionary and no volume key commands.
+useless on it, even when the Apollo is the default output device. The Console
+app also ships no AppleScript dictionary and no volume key commands.
 
 The level can only be changed by opening Console or reaching for the knob — until
 now.
@@ -61,7 +61,7 @@ now.
 
 `UA Mixer Engine.app` starts at login and listens on **TCP `127.0.0.1:4710`**,
 speaking an undocumented path-based "StateTree" protocol. It is the same channel
-UAD Console itself uses, and it listens whether or not the Console window is
+the Console app itself uses, and it listens whether or not the Console window is
 open.
 
 - Messages are `<verb> <path> [value]` terminated by a **NUL byte** (`0x00`).
@@ -135,7 +135,7 @@ app after every build.
 |---|---|
 | **Volume up / down keys** | Monitor level ±1 dB per press; a held key accelerates |
 | **Mute key** | Mutes and unmutes the monitor output |
-| Click the icon | Slider, Mute, Dim, overlay switch, [UA Watchdog](#ua-watchdog), Start at Login |
+| Click the icon | Slider, Mute, Dim, overlay switch, [Mixer Watchdog](#mixer-watchdog), Start at Login |
 | `ApolloMonitor --step up\|down` | Adjust once and exit — needs no Accessibility |
 | `ApolloMonitor --login on\|off\|status` | Start at Login, from the shell — what `install.sh` calls |
 
@@ -214,26 +214,26 @@ This needs **Accessibility** permission (it is a `CGEventTap`); the menu and
 slider do not. `--step` is the escape hatch if you would rather not grant it:
 bind it from Shortcuts, Karabiner, or anything else that can run a command.
 
-## UA Watchdog
+## Mixer Watchdog
 
 `./install.sh` also installs a small LaunchAgent, `com.nicholassmith.ua-watchdog`,
-which the menu's **UA Watchdog** submenu reports on and toggles. It exists because
-UA's helper processes occasionally wedge at 100% CPU and take Apollo audio down
+which the menu's **Mixer Watchdog** submenu reports on and toggles. It exists because
+The mixer engine's helper processes occasionally wedge at 100% CPU and take Apollo audio down
 with them — most often an orphaned `UA Mixer Helper` left behind when Console
 quits.
 
-Every 60 seconds it scans for Universal Audio processes and kills the ones that
+Every 60 seconds it scans for the Apollo's mixer-engine processes and kills the ones that
 are stuck:
 
 | Process | Bar |
 |---|---|
 | `UA Mixer Helper`, orphaned (PPID 1) | ≥ 80% CPU — killed on sight |
 | `UA Mixer Engine` (real-time, so a higher bar) | ≥ 98% CPU across 3 ticks |
-| Everything else UA (Console, UA Connect, UAD Meter, helpers) | ≥ 90% CPU across 2 ticks |
+| Every other process from the same suite (`Console`, `UA Connect`, `UAD Meter`, helpers) | ≥ 90% CPU across 2 ticks |
 
 If the process it killed was on the audio path it then `launchctl kickstart`s the
 mixer engine, so sound comes back without you doing anything, and posts a
-notification. Everything runs as you — no sudo, since UA's processes are
+notification. Everything runs as you — no sudo, since those processes are
 user-owned.
 
 | File | |
@@ -243,7 +243,7 @@ user-owned.
 | `~/.local/state/ua-watchdog.log` | appended only on WARN/KILL — **Show log…** opens it |
 | `~/.local/state/ua-watchdog.heartbeat` | epoch of the last tick; if it goes stale the submenu turns red |
 
-Turn it off with **UA Watchdog ▸ Disable watchdog**. That is persistent: it
+Turn it off with **Mixer Watchdog ▸ Disable watchdog**. That is persistent: it
 survives reboots, and re-running `./install.sh` refreshes the script and plist
 but leaves it disabled. Thresholds are env-overridable (`UA_WD_CPU`,
 `UA_WD_CPU_ENGINE`, `UA_WD_ORPHAN_CPU`, `UA_WD_TICKS`, `UA_WD_TICKS_ENGINE`) at
@@ -257,8 +257,25 @@ To install or reinstall it on its own, without rebuilding the app:
 
 ## Requirements
 
-macOS 13+, an Apollo with UA's software installed. Tested against an Apollo Twin
-MkII and UAD Console 3 (1.3.0) on macOS 26.
+macOS 13+ and an Apollo interface with its desktop software (the Console app
+and its mixer engine) installed.
+
+## Supported interfaces
+
+The app never talks to the hardware. It talks to the mixer engine that the
+Console app runs on the Mac, so any Apollo that is driven by that engine should
+work:
+
+| Interface | Status |
+|-----------|--------|
+| Apollo Twin MkII | Tested (Console 3, 1.3.0, macOS 26) |
+| Apollo Twin X, Apollo Solo | Untested; same engine and protocol, expected to work |
+| Apollo x4, x6, x8, x8p, x16 | Untested; same engine, expected to work |
+| Earlier rack Apollo 8, 8p, 16 | Untested; same engine, expected to work |
+| Any model that only works over USB on Windows | Not applicable — no Mac mixer engine |
+
+Only the first device (`/devices/0`) is controlled. If you run one of the
+untested models, a report either way is welcome.
 
 ## Diagnostics
 
@@ -271,7 +288,7 @@ every level change. (`log` is a zsh builtin — the absolute path matters.)
 
 ## Caveats
 
-- The protocol is undocumented and unsupported. A UA update could change it.
+- The protocol is undocumented and unsupported. A vendor update could change it.
 - Single device only (`/devices/0`); no surround, cue outputs, or preamp control.
 - The 1/54 grid is what a Twin MkII reports. Other Apollos may differ; the step
   arithmetic does not depend on the exact divisor.
@@ -300,7 +317,7 @@ colour, and cooperative hiding so no icon strands another.
 | App | What it does |
 |---|---|
 | [Claude Usage](https://github.com/nicholaspsmith/claude-usage-menubar) | Claude Code plan limits, resets, and live agent sessions |
-| **Apollo Monitor** | Universal Audio Apollo monitor level, plus a UA process watchdog |
+| **Apollo Monitor** | Apollo audio-interface monitor level, plus a mixer-process watchdog |
 | [Battery Time](https://github.com/nicholaspsmith/battery-time-menubar) | Time remaining, power mode, and 24h usage |
 | [VPN & DNS](https://github.com/nicholaspsmith/vpn-dns-menubar) | A chameleon for Mullvad + Tailscale state, with a DNS watcher |
 | [Process Monitor](https://github.com/nicholaspsmith/MacOS_Process_Monitor) | Process-count sparkline against the per-UID limit |

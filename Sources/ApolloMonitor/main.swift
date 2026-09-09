@@ -34,7 +34,7 @@ final class App: NSObject, NSApplicationDelegate {
     private var tap: HotkeyTap!
     private var trustTimer: Timer?
 
-    /// Folded-in UA Watchdog surface (a submenu, not a separate app): the launchd
+    /// Folded-in Mixer Watchdog surface (a submenu, not a separate app): the launchd
     /// controller, the last status shown (so the toggle knows enable vs disable),
     /// and a clock formatter for the "last kill" time.
     private let watchdog = WatchdogController()
@@ -385,9 +385,9 @@ final class App: NSObject, NSApplicationDelegate {
         return item
     }
 
-    // MARK: - UA Watchdog submenu
+    // MARK: - Mixer Watchdog submenu
 
-    /// The folded-in UA Watchdog surface: its state on the parent item's shield
+    /// The folded-in Mixer Watchdog surface: its state on the parent item's shield
     /// icon, and a submenu with details + a persistent Disable/Enable toggle. State
     /// is read fresh here (once per menu open), so nothing polls while the menu is
     /// closed.
@@ -395,7 +395,7 @@ final class App: NSObject, NSApplicationDelegate {
         let status = watchdog.status()
         watchdogStatus = status
 
-        let item = NSMenuItem(title: "UA Watchdog", action: nil, keyEquivalent: "")
+        let item = NSMenuItem(title: "Mixer Watchdog", action: nil, keyEquivalent: "")
         item.isEnabled = true
         item.image = WatchdogIcon.image(for: status.state)
 
@@ -430,14 +430,14 @@ final class App: NSObject, NSApplicationDelegate {
     private func watchdogHeader(_ status: WatchdogStatus) -> String {
         switch status.state {
         case .active:
-            if let age = status.heartbeatAge { return "✓ UA Watchdog active · checked \(RelativeTime.short(age)) ago" }
-            return "✓ UA Watchdog active"
+            if let age = status.heartbeatAge { return "✓ Mixer Watchdog active · checked \(RelativeTime.short(age)) ago" }
+            return "✓ Mixer Watchdog active"
         case .disabled:
-            return "○ UA Watchdog disabled"
+            return "○ Mixer Watchdog disabled"
         case .notInstalled:
-            return "○ UA Watchdog not installed — run ./install.sh"
+            return "○ Mixer Watchdog not installed — run ./install.sh"
         case .problem(let reason):
-            return "⚠ UA Watchdog: \(reason)"
+            return "⚠ Mixer Watchdog: \(reason)"
         }
     }
 
@@ -467,8 +467,8 @@ final class App: NSObject, NSApplicationDelegate {
         // model would be overwritten before it could be seen. Say it out loud.
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = wanted ? "Couldn't enable the UA Watchdog"
-                                   : "Couldn't disable the UA Watchdog"
+        alert.messageText = wanted ? "Couldn't enable the Mixer Watchdog"
+                                   : "Couldn't disable the Mixer Watchdog"
         alert.informativeText = """
         `launchctl \(failedStep)` failed for \(WatchdogPaths.label).
 
