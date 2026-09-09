@@ -262,15 +262,19 @@ and its mixer engine) installed.
 
 ## Supported interfaces
 
+Apollo Monitor is an independent, unofficial project. It is not affiliated
+with, endorsed by, or supported by Universal Audio; Apollo is their trademark
+and this app simply works alongside their interfaces.
+
 The app never talks to the hardware. It talks to the mixer engine that the
 Console app runs on the Mac, so any Apollo that is driven by that engine should
 work:
 
 | Interface | Status |
 |-----------|--------|
-| Apollo Twin MkII | Tested (Console 3, 1.3.0, macOS 26) |
-| Apollo Twin X, Apollo Solo | Untested; same engine and protocol, expected to work |
-| Apollo x4, x6, x8, x8p, x16 | Untested; same engine, expected to work |
+| Universal Audio Apollo Twin MkII | Tested (Console 3, 1.3.0, macOS 26) |
+| Universal Audio Apollo Twin X, Apollo Solo | Untested; same engine and protocol, expected to work |
+| Universal Audio Apollo x4, x6, x8, x8p, x16 | Untested; same engine, expected to work |
 | Earlier rack Apollo 8, 8p, 16 | Untested; same engine, expected to work |
 | Any model that only works over USB on Windows | Not applicable — no Mac mixer engine |
 
