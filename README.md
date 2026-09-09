@@ -31,16 +31,17 @@ Built on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) and
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
-A green arc whose filled length is the monitor level, drawn by
-[`MeterIcon`](https://github.com/nicholaspsmith/StatusItemKit) at 18pt. It follows
-the level live, including changes made on the Apollo's own knob or in Console.
+A rocket whose exhaust flame is the monitor level: a short flicker near the
+bottom of the range, a long plume near the top. It follows the level live,
+including changes made on the Apollo's own knob or in Console.
 
 It turns **grey whenever the level cannot be changed** — the mixer engine is not
 running, the Apollo is offline, the output is muted, or Accessibility has not been
 granted yet. The menu says which.
 
-Being green means it is a full-colour image rather than a template, so unlike most
-menu-bar glyphs it keeps its colour instead of inverting when the menu opens.
+Prefer the original green arc? **menu ▸ Icon ▸ Arc**. Both are full-colour images
+rather than templates, so unlike most menu-bar glyphs they keep their colour
+instead of inverting when the menu opens.
 
 ## Why this exists
 
@@ -299,7 +300,7 @@ colour, and cooperative hiding so no icon strands another.
 | [Claude Usage](https://github.com/nicholaspsmith/claude-usage-menubar) | Claude Code plan limits, resets, and live agent sessions |
 | **Apollo Monitor** | Universal Audio Apollo monitor level, plus a UA process watchdog |
 | [Battery Time](https://github.com/nicholaspsmith/battery-time-menubar) | Time remaining, power mode, and 24h usage |
-| [VPN & DNS](https://github.com/nicholaspsmith/vpn-dns-menubar) | One dot for Mullvad + Tailscale state, with a DNS watcher |
+| [VPN & DNS](https://github.com/nicholaspsmith/vpn-dns-menubar) | A chameleon for Mullvad + Tailscale state, with a DNS watcher |
 | [Process Monitor](https://github.com/nicholaspsmith/MacOS_Process_Monitor) | Process-count sparkline against the per-UID limit |
 | [KeyLight](https://github.com/nicholaspsmith/keylight-menubar) | Ctrl+brightness keys remapped to keyboard backlight |
 | [MacRecorder](https://github.com/nicholaspsmith/MacRecorder) | Screen recording with system audio |
