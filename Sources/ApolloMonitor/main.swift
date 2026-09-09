@@ -29,6 +29,8 @@ final class App: NSObject, NSApplicationDelegate {
     private var yieldClient: YieldClient!
     private let engine = EngineClient()
     private let output = DefaultOutputWatcher()
+    /// Restarts the mixer engine when it has lost an Apollo that macOS still sees.
+    private let recovery = EngineRecovery()
     private let hud = VolumeHUD()
     private let overlayPreference = OverlayPreference()
     private var tap: HotkeyTap!
@@ -93,6 +95,9 @@ final class App: NSObject, NSApplicationDelegate {
                 // the wrong device.
                 self?.output.refresh()
                 self?.refreshIcon()
+                // The recovery grace period has to elapse even when nothing
+                // else changes, so it is ticked from here as well as on change.
+                self?.evaluateRecovery()
             },
             onBuildMenu: { [weak self] menu in self?.buildMenu(menu) }
         )
@@ -102,6 +107,15 @@ final class App: NSObject, NSApplicationDelegate {
 
         engine.onChange = { [weak self] state in self?.scheduleUIRefresh(state) }
         engine.start()
+
+        // A restart timed from before sleep would fire the instant the machine
+        // wakes, right when the engine is re-enumerating; restart the clock instead.
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.recovery.noteWake()
+            self?.evaluateRecovery()
+        }
 
         // The machine's own volume keys, not a chord: macOS cannot control the
         // Apollo's level (it has no Core Audio volume), so pressing them today
@@ -225,7 +239,12 @@ final class App: NSObject, NSApplicationDelegate {
                 tapered: state.tapered, db: state.db, isLive: state.isLive
             )
             self.showOverlayIfStateChanged(state)
+            self.evaluateRecovery()
         }
+    }
+
+    private func evaluateRecovery() {
+        recovery.evaluate(engine.state, hardwarePresent: output.isUniversalAudioPresent)
     }
 
     /// The overlay follows the state itself rather than the keypress, so turning the
@@ -331,6 +350,8 @@ final class App: NSObject, NSApplicationDelegate {
         dim.isEnabled = state.isLive
         menu.addItem(dim)
 
+        addRecoveryItems(to: menu, state: state)
+
         if !(tap?.isTrusted ?? false) {
             menu.addItem(.separator())
             menu.addItem(actionItem("⚠ Grant Accessibility…", #selector(grantTrust)))
@@ -369,6 +390,39 @@ final class App: NSObject, NSApplicationDelegate {
         menu.addItem(login)
 
         menu.addItem(actionItem("Quit Apollo Monitor", #selector(quit), key: "q"))
+    }
+
+    /// Engine recovery, shown only while it is relevant: the engine says the Apollo
+    /// is offline but Core Audio still has it (a stale engine — say what is about
+    /// to happen and offer to do it now), or a restart was issued recently.
+    private func addRecoveryItems(to menu: NSMenu, state: MonitorState) {
+        let stale = state.socketConnected && !state.deviceOnline && output.isUniversalAudioPresent
+        let recent = recovery.lastAttempt.flatMap { attempt in
+            Date().timeIntervalSince(attempt.date) < 3600 ? attempt : nil
+        }
+        guard stale || recent != nil else { return }
+
+        menu.addItem(.separator())
+        if stale {
+            let line: String
+            if let due = recovery.pendingRestartAt {
+                let wait = max(0, due.timeIntervalSinceNow)
+                line = "Apollo is present but the mixer engine lost it · restarting engine in \(RelativeTime.short(wait))"
+            } else {
+                line = "Apollo is present but the mixer engine lost it"
+            }
+            menu.addItem(infoItem(line, enabled: false))
+        }
+        if let recent {
+            let when = clockFormatter.string(from: recent.date)
+            let line = recent.succeeded
+                ? "Mixer engine restarted \(when)\(recent.manual ? "" : " to recover the Apollo")"
+                : "⚠ Mixer engine restart failed \(when)"
+            menu.addItem(infoItem(line, enabled: false))
+        }
+        if state.socketConnected && !state.isLive {
+            menu.addItem(actionItem("Restart UA Mixer Engine", #selector(restartEngine)))
+        }
     }
 
     /// A non-clickable row. `enabled` controls only how it draws — full-strength
@@ -446,6 +500,8 @@ final class App: NSObject, NSApplicationDelegate {
     @objc private func toggleMute() { engine.setMuted(!engine.state.muted) }
 
     @objc private func toggleDim() { engine.setDimmed(!engine.state.dimmed) }
+
+    @objc private func restartEngine() { recovery.restartNow() }
 
     @objc private func grantTrust() {
         tap.requestTrust()

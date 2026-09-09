@@ -135,7 +135,7 @@ app after every build.
 |---|---|
 | **Volume up / down keys** | Monitor level ±1 dB per press; a held key accelerates |
 | **Mute key** | Mutes and unmutes the monitor output |
-| Click the icon | Slider, Mute, Dim, overlay switch, [Mixer Watchdog](#mixer-watchdog), Start at Login |
+| Click the icon | Slider, Mute, Dim, [engine recovery](#engine-recovery) when needed, overlay switch, [Mixer Watchdog](#mixer-watchdog), Start at Login |
 | `ApolloMonitor --step up\|down` | Adjust once and exit — needs no Accessibility |
 | `ApolloMonitor --login on\|off\|status` | Start at Login, from the shell — what `install.sh` calls |
 
@@ -255,6 +255,42 @@ To install or reinstall it on its own, without rebuilding the app:
 ./watchdog/install-watchdog.sh
 ```
 
+## Engine recovery
+
+The watchdog handles a mixer engine that is *busy*. The app itself handles one
+that is *lost*: after a deep sleep the engine can re-mount the Thunderbolt bus
+with zero hardware devices and leave `DeviceOnline` false for good, while macOS
+still lists the Apollo as a Core Audio device. Every client then shows the Apollo
+as disconnected — Console included, which still displays it by name — and the
+slider and volume keys go grey.
+
+The app watches for exactly that combination — engine socket up, engine says
+offline, a Universal Audio device present in Core Audio — and when it has held
+for **60 seconds** restarts the engine with the same `launchctl kickstart -k
+gui/<uid>/com.uaudio.ua_mixer_engine` the watchdog uses. The engine is listening
+again within a couple of seconds, re-enumerates, and the app reconnects on its
+own. A notification says it happened, and the menu shows *Mixer engine restarted
+HH:MM to recover the Apollo* for the next hour.
+
+Guards, so it cannot make things worse:
+
+- **One attempt per offline episode.** If the restart did not bring the device
+  back, restarting again will not either; nothing more happens until the device
+  comes online and goes offline again.
+- **Ten-minute cooldown** between attempts, so a flapping device cannot drive a
+  restart loop.
+- **Wake restarts the 60 s clock**, so the engine's own re-enumeration after
+  sleep — which takes tens of seconds — is never pre-empted.
+- An Apollo that is actually unplugged has no Core Audio device, so the engine is
+  right and nothing is restarted. Engine not running at all is the watchdog's
+  department, not this one's.
+
+While the condition is detected the menu says so, with the countdown, and offers
+**Restart UA Mixer Engine** to skip the wait. The item is also there whenever the
+engine is up but the level cannot be changed. Every step is logged (see
+[Diagnostics](#diagnostics)); the decision logic is `EngineRecoveryPolicy` in
+`ApolloMonitorCore`, and pure, so the timing rules are unit-tested.
+
 ## Requirements
 
 macOS 13+ and an Apollo interface with its desktop software (the Console app
@@ -287,8 +323,10 @@ untested models, a report either way is welcome.
 /usr/bin/log stream --predicate 'subsystem == "com.nicholaspsmith.ApolloMonitor"'
 ```
 
-Logs the socket state, the resolved MONITOR output, device online/offline, and
-every level change. (`log` is a zsh builtin — the absolute path matters.)
+Logs the socket state, the resolved MONITOR output, device online/offline,
+whether Core Audio has a Universal Audio device, every level change, and every
+[engine restart](#engine-recovery). (`log` is a zsh builtin — the absolute path
+matters.)
 
 ## Caveats
 
