@@ -61,13 +61,14 @@ final class App: NSObject, NSApplicationDelegate {
     /// What the menu-bar icon was last drawn from, to skip identical redraws.
     private var lastIconKey: String?
 
-    /// Rocket mascot (flame = level) or the plain arc. Persisted.
+    /// The Apollo face (tick arc = level) or the plain arc. Persisted; the old
+    /// "rocket" value maps to the face.
     enum IconStyle: String, CaseIterable {
-        case rocket, arc
-        var title: String { self == .rocket ? "Rocket" : "Arc" }
+        case apollo, arc
+        var title: String { self == .apollo ? "Apollo" : "Arc" }
         private static let key = "iconStyle"
         static var current: IconStyle {
-            get { UserDefaults.standard.string(forKey: key).flatMap(IconStyle.init) ?? .rocket }
+            get { UserDefaults.standard.string(forKey: key).flatMap(IconStyle.init) ?? .apollo }
             set { UserDefaults.standard.set(newValue.rawValue, forKey: key) }
         }
     }
@@ -276,8 +277,8 @@ final class App: NSObject, NSApplicationDelegate {
         //
         // Grey when the level cannot be changed — engine down, Apollo offline,
         // muted, or Accessibility not yet granted. The menu says which.
-        if IconStyle.current == .rocket {
-            status.setIcon(CharacterIcon.rocket(level: fraction, online: live))
+        if IconStyle.current == .apollo {
+            status.setIcon(CharacterIcon.apollo(level: fraction, online: live))
             return
         }
         status.setIcon(MeterIcon.arc(

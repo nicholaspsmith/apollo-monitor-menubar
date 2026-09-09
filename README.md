@@ -31,9 +31,11 @@ Built on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) and
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
-A rocket whose exhaust flame is the monitor level: a short flicker near the
-bottom of the range, a long plume near the top. It follows the level live,
-including changes made on the Apollo's own knob or in Console.
+An Apollo Twin's face: the monitor knob with its ring of ticks is the mouth,
+two square buttons above it are the eyes. The ticks light green with the
+monitor level, from bottom-left over the top to bottom-right, shown above at
+15%, 50%, 90% and offline. It follows the level live, including changes made
+on the Apollo's own knob or in Console.
 
 It turns **grey whenever the level cannot be changed** — the mixer engine is not
 running, the Apollo is offline, the output is muted, or Accessibility has not been
