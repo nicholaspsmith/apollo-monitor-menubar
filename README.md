@@ -343,6 +343,10 @@ matters.)
 
 ## License
 
+**Changed 2026-09-20: MIT → Mozilla Public License 2.0.** Copies obtained
+under MIT before that date keep the MIT terms; everything from this point on
+is MPL-2.0.
+
 Copyright (c) 2026 Nicholas Smith. Licensed under the
 [Mozilla Public License 2.0](LICENSE). You may use, modify, sell and
 redistribute this software, including inside proprietary products, provided
