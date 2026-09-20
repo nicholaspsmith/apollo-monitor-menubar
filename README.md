@@ -343,7 +343,11 @@ matters.)
 
 ## License
 
-MIT
+Copyright (c) 2026 Nicholas Smith. Licensed under the
+[Mozilla Public License 2.0](LICENSE). You may use, modify, sell and
+redistribute this software, including inside proprietary products, provided
+the copyright notice and license stay on these files and any modified
+versions of them are made available under the same license.
 
 ## Why not a SwiftBar plugin?
 
