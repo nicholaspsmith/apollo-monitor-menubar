@@ -395,6 +395,8 @@ final class App: NSObject, NSApplicationDelegate {
         login.state = LoginItem.isEnabled ? .on : .off
         menu.addItem(login)
 
+        menu.addItem(.separator())
+        menu.addItem(AppVersion.menuItem())
         menu.addItem(actionItem("Quit Apollo Monitor", #selector(quit), key: "q"))
     }
 
