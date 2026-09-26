@@ -1,0 +1,17 @@
+# Every push to main is a release: tags the version at the top of CHANGELOG.md
+# and publishes it. The rule and the tagging live in StatusItemKit
+# (scripts/release/, .github/workflows/menubarn-release.yml).
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency: release
+
+jobs:
+  release:
+    uses: nicholaspsmith/StatusItemKit/.github/workflows/menubarn-release.yml@main
