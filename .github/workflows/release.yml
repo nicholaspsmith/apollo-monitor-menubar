@@ -1,16 +1,19 @@
 # Every push to main is a release: tags the version at the top of CHANGELOG.md
-# and publishes it. The rule and the tagging live in StatusItemKit
-# (scripts/release/, .github/workflows/menubarn-release.yml).
+# and publishes it as "vX.Y.Z". Pull requests fail unless they carry that new
+# version; a release made by hand is retitled to its tag. The rule and the
+# tagging live in StatusItemKit (scripts/release/,
+# .github/workflows/menubarn-release.yml).
 name: Release
 
 on:
   push:
     branches: [main]
+  pull_request:
+  release:
+    types: [published]
 
 permissions:
   contents: write
-
-concurrency: release
 
 jobs:
   release:
