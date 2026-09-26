@@ -341,6 +341,19 @@ matters.)
 — and, for the watchdog,
 [`2026-08-08-ua-watchdog-vendoring-design.md`](docs/superpowers/specs/2026-08-08-ua-watchdog-vendoring-design.md)
 
+## Releasing
+
+Every push to `main` is a release. Before pushing, add a dated
+`## [X.Y.Z] - YYYY-MM-DD` section to the top of [`CHANGELOG.md`](CHANGELOG.md)
+(minor for features, patch for fixes; turn a waiting `## [Unreleased]` into it).
+When it reaches `main`, GitHub tags `vX.Y.Z` and publishes the section as the
+release; a push without a new version is refused, locally by a `pre-push` hook
+and again by the release workflow. Don't tag by hand. After merging, `git pull`
+for the tag and rebuild. `[no release]` in the tip commit's message is the
+escape hatch for pushes that change nothing a user runs. `install.sh` arms the
+hook; see [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one)
+for the whole rule.
+
 ## License
 
 **Changed 2026-09-20: MIT → Mozilla Public License 2.0.** Copies obtained

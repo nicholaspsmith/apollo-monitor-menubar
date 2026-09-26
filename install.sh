@@ -9,6 +9,16 @@
 # propagate; SMAppService accepts a symlink there for Start-at-Login).
 set -euo pipefail
 
+# Menubarn release rule — every push is a release. Arm the pre-push hook in
+# every Menubarn repo cloned beside this one (local git config, so a fresh
+# clone has none until this runs). StatusItemKit README, "Releases".
+RELEASE_KIT="$(cd "$(dirname "$0")/.." && pwd)/StatusItemKit/scripts/release/adopt.sh"
+if [ -x "$RELEASE_KIT" ]; then
+    "$RELEASE_KIT" --hooks-only || echo "Release hook: adopt.sh failed" >&2
+else
+    echo "Release hook: StatusItemKit not found beside this repo — clone it and re-run" >&2
+fi
+
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_NAME="Apollo Monitor.app"
 

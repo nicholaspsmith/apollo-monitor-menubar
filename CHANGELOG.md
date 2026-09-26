@@ -1,9 +1,11 @@
 # Changelog
 
-Every push to `main` is a release. Add a `## [X.Y.Z] - YYYY-MM-DD` section at
-the top (minor for features, patch for fixes); GitHub tags it and publishes
-the section as the release notes. Versions follow [Semantic
-Versioning](https://semver.org/).
+Every push to `main` is a release. Before pushing, add a `## [X.Y.Z] - YYYY-MM-DD`
+section at the top with `- ` entries (minor for features, patch for fixes); if an
+`## [Unreleased]` section is waiting, turn it into that section. GitHub tags it
+and publishes the section as the release notes; a push without one is refused.
+Versions follow [Semantic Versioning](https://semver.org/). The full rule:
+[StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
 ## [1.0.1] - 2026-09-23
 
