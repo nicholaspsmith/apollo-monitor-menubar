@@ -3,7 +3,8 @@
 Every push to `main` is a release. Before pushing, add a `## [X.Y.Z] - YYYY-MM-DD`
 section at the top with `- ` entries (minor for features, patch for fixes); if an
 `## [Unreleased]` section is waiting, turn it into that section. GitHub tags it
-and publishes the section as the release notes; a push without one is refused.
+and publishes the section as the release notes; a push or pull request
+without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
