@@ -29,6 +29,9 @@ import Foundation
 final class DefaultOutputWatcher {
     private(set) var isUniversalAudio = false
     private(set) var isUniversalAudioPresent = false
+    /// Called when a Universal Audio device appears or goes away, so the icon
+    /// can follow without waiting for the next poll.
+    var onPresenceChange: (() -> Void)?
 
     private var defaultOutputAddress = AudioObjectPropertyAddress(
         mSelector: kAudioHardwarePropertyDefaultOutputDevice,
@@ -69,6 +72,7 @@ final class DefaultOutputWatcher {
         }
         if isUniversalAudioPresent != wasPresent {
             log.notice("Universal Audio device present in Core Audio: \(self.isUniversalAudioPresent, privacy: .public)")
+            onPresenceChange?()
         }
     }
 

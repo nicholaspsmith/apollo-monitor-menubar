@@ -111,6 +111,7 @@ final class App: NSObject, NSApplicationDelegate {
         yieldClient = YieldClient(item: status)
         yieldClient.start()
 
+        output.onPresenceChange = { [weak self] in self?.refreshIcon() }
         engine.onChange = { [weak self] state in self?.scheduleUIRefresh(state) }
         engine.start()
 
@@ -284,6 +285,9 @@ final class App: NSObject, NSApplicationDelegate {
     // MARK: - Icon + menu
 
     private func refreshIcon() {
+        // No Universal Audio device, nothing to control: off the bar until one
+        // appears. Ahead of the redraw cache, which knows nothing of presence.
+        status.isSuppressed = !output.isUniversalAudioPresent
         let state = engine.state
         let fraction = CGFloat(state.tapered)
         let live = state.isLive && !state.muted && tap?.isRunning == true
