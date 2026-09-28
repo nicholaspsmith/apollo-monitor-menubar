@@ -32,17 +32,37 @@ mkdir -p "$HOME/Applications"
 ln -sfn "$SRC_DIR/build/$APP_NAME" "$HOME/Applications/$APP_NAME"
 echo "Linked $HOME/Applications/$APP_NAME -> $SRC_DIR/build/$APP_NAME"
 
-# Register Start at Login. Without this the app only runs until the next reboot,
-# and a menu-bar app that quietly fails to come back is easy to miss for weeks.
-# SMAppService can only register the calling process's own bundle, so this has
-# to run the installed binary rather than call launchctl.
-if "$HOME/Applications/$APP_NAME/Contents/MacOS/ApolloMonitor" --login on >/dev/null; then
-    echo "Start at Login: on"
+# Ask to turn on Start at Login. SMAppService can only register the calling
+# process's own bundle, so this runs the installed binary's headless --login.
+APP="$HOME/Applications/$APP_NAME"
+BIN="$APP/Contents/MacOS/ApolloMonitor"
+PROC="${APP##*/}/Contents/MacOS/ApolloMonitor"   # matches the symlink-resolved path too
+if [ "$("$BIN" --login status 2>/dev/null)" = "on" ]; then
+    echo "Start at Login: already on"
+elif [ -t 0 ]; then
+    read -r -p "Start Apollo Monitor at login? [Y/n] " answer
+    case "$answer" in
+        [nN]*) echo "Start at Login: left off (turn it on from the menu)" ;;
+        *) if "$BIN" --login on >/dev/null; then
+               echo "Start at Login: on"
+           else
+               echo "Start at Login: could not register (turn it on from the menu)" >&2
+           fi ;;
+    esac
 else
-    echo "Start at Login: could not register (turn it on from the menu)" >&2
+    echo "Start at Login: off (not asked: no terminal). Turn it on from the menu, or run"
+    echo "    \"$BIN\" --login on"
 fi
 
-open "$HOME/Applications/$APP_NAME"
+# `open` on a running app only activates it, so quit the old build first or the
+# new one never launches. Wait for it to go so both don't briefly sit in the bar.
+if pgrep -f "$PROC" >/dev/null; then
+    osascript -e "tell application id \"$(defaults read "$APP/Contents/Info" CFBundleIdentifier)\" to quit" >/dev/null 2>&1 || true
+    for _ in 1 2 3 4 5 6 7 8 9 10; do pgrep -f "$PROC" >/dev/null || break; sleep 0.5; done
+    pkill -f "$PROC" 2>/dev/null || true
+    sleep 1
+fi
+/usr/bin/open "$APP"
 
 cat <<'EOF'
 
