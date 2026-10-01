@@ -1,8 +1,8 @@
 # Apollo Monitor
 
-<p align="center"><img src="docs/mascot.png" width="160" alt="Apollo Monitor mascot, from the Menubarn widget library"></p>
+<p align="center"><img src="docs/mascot.png" width="160" alt="Apollo Monitor mascot, from Menumon"></p>
 
-<p align="center">Part of the <a href="https://widgets.nicksmith.software">Menubarn</a> widget library.</p>
+<p align="center">Part of <strong><a href="https://menumon.nicksmith.software">Menumon</a></strong>.</p>
 
 ![The Apollo Monitor menu](screenshots/menu.png)
 

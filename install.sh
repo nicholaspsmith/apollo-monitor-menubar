@@ -9,8 +9,8 @@
 # propagate; SMAppService accepts a symlink there for Start-at-Login).
 set -euo pipefail
 
-# Menubarn release rule — every push is a release. Arm the pre-push hook in
-# every Menubarn repo cloned beside this one (local git config, so a fresh
+# Menumon release rule — every push is a release. Arm the pre-push hook in
+# every Menumon repo cloned beside this one (local git config, so a fresh
 # clone has none until this runs). StatusItemKit README, "Releases".
 RELEASE_KIT="$(cd "$(dirname "$0")/.." && pwd)/StatusItemKit/scripts/release/adopt.sh"
 if [ -x "$RELEASE_KIT" ]; then
