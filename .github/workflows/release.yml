@@ -2,7 +2,7 @@
 # and publishes it as "vX.Y.Z". Pull requests fail unless they carry that new
 # version; a release made by hand is retitled to its tag. The rule and the
 # tagging live in StatusItemKit (scripts/release/,
-# .github/workflows/menubarn-release.yml).
+# .github/workflows/menumon-release.yml).
 name: Release
 
 on:
@@ -17,4 +17,4 @@ permissions:
 
 jobs:
   release:
-    uses: nicholaspsmith/StatusItemKit/.github/workflows/menubarn-release.yml@main
+    uses: nicholaspsmith/StatusItemKit/.github/workflows/menumon-release.yml@main
