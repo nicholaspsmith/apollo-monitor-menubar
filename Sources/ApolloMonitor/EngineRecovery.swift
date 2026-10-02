@@ -11,7 +11,7 @@ import StatusItemKit
 /// Restarts a mixer engine that has lost the Apollo — the app-side half of
 /// `EngineRecoveryPolicy`: it feeds the policy what the engine and Core Audio say,
 /// and when the policy asks for it (or the user does, from the menu) runs the same
-/// `launchctl kickstart -k` the watchdog uses. No sudo: the engine is a user agent.
+/// `launchctl kickstart -k` Mac Daddy's UA watchdog uses. No sudo: the engine is a user agent.
 final class EngineRecovery {
     struct Attempt: Equatable {
         let date: Date

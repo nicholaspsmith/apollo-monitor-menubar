@@ -6,7 +6,7 @@
 
 import Foundation
 
-/// UA Mixer Engine's launchd identity, for restarting it the way the watchdog does.
+/// UA Mixer Engine's launchd identity, for restarting it with `launchctl kickstart -k`.
 public enum MixerEngine {
     public static let label = "com.uaudio.ua_mixer_engine"
 

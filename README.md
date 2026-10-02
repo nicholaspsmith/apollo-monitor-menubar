@@ -135,7 +135,7 @@ app after every build.
 |---|---|
 | **Volume up / down keys** | Monitor level ±1 dB per press; a held key accelerates |
 | **Mute key** | Mutes and unmutes the monitor output |
-| Click the icon | Slider, Mute, Dim, [engine recovery](#engine-recovery) when needed, overlay switch, [Mixer Watchdog](#mixer-watchdog), Start at Login |
+| Click the icon | Slider, Mute, Dim, [engine recovery](#engine-recovery) when needed, overlay switch, Start at Login |
 | `ApolloMonitor --step up\|down` | Adjust once and exit — needs no Accessibility |
 | `ApolloMonitor --login on\|off\|status` | Start at Login, from the shell — what `install.sh` calls when you say yes |
 
@@ -216,49 +216,14 @@ bind it from Shortcuts, Karabiner, or anything else that can run a command.
 
 ## Mixer Watchdog
 
-`./install.sh` also installs a small LaunchAgent, `com.nicholassmith.ua-watchdog`,
-which the menu's **Mixer Watchdog** submenu reports on and toggles. It exists because
-The mixer engine's helper processes occasionally wedge at 100% CPU and take Apollo audio down
-with them — most often an orphaned `UA Mixer Helper` left behind when Console
-quits.
-
-Every 60 seconds it scans for the Apollo's mixer-engine processes and kills the ones that
-are stuck:
-
-| Process | Bar |
-|---|---|
-| `UA Mixer Helper`, orphaned (PPID 1) | ≥ 80% CPU — killed on sight |
-| `UA Mixer Engine` (real-time, so a higher bar) | ≥ 98% CPU across 3 ticks |
-| Every other process from the same suite (`Console`, `UA Connect`, `UAD Meter`, helpers) | ≥ 90% CPU across 2 ticks |
-
-If the process it killed was on the audio path it then `launchctl kickstart`s the
-mixer engine, so sound comes back without you doing anything, and posts a
-notification. Everything runs as you — no sudo, since those processes are
-user-owned.
-
-| File | |
-|---|---|
-| `~/.local/bin/ua-watchdog.sh` | the script (copied from `watchdog/`) |
-| `~/Library/LaunchAgents/com.nicholassmith.ua-watchdog.plist` | the agent |
-| `~/.local/state/ua-watchdog.log` | appended only on WARN/KILL — **Show log…** opens it |
-| `~/.local/state/ua-watchdog.heartbeat` | epoch of the last tick; if it goes stale the submenu turns red |
-
-Turn it off with **Mixer Watchdog ▸ Disable watchdog**. That is persistent: it
-survives reboots, and re-running `./install.sh` refreshes the script and plist
-but leaves it disabled. Thresholds are env-overridable (`UA_WD_CPU`,
-`UA_WD_CPU_ENGINE`, `UA_WD_ORPHAN_CPU`, `UA_WD_TICKS`, `UA_WD_TICKS_ENGINE`) at
-the top of the script.
-
-To install or reinstall it on its own, without rebuilding the app:
-
-```sh
-./watchdog/install-watchdog.sh
-```
+The mixer-process watchdog that used to ship here now lives in
+[Mac Daddy](https://github.com/nicholaspsmith/mac-daddy-menubar), whose installer
+retires the old `com.nicholassmith.ua-watchdog` agent.
 
 ## Engine recovery
 
-The watchdog handles a mixer engine that is *busy*. The app itself handles one
-that is *lost*: after a deep sleep the engine can re-mount the Thunderbolt bus
+A mixer engine that is *busy* is Mac Daddy's UA watchdog's job. This app handles
+one that is *lost*: after a deep sleep the engine can re-mount the Thunderbolt bus
 with zero hardware devices and leave `DeviceOnline` false for good, while macOS
 still lists the Apollo as a Core Audio device. Every client then shows the Apollo
 as disconnected — Console included, which still displays it by name — and the
@@ -267,7 +232,7 @@ slider and volume keys go grey.
 The app watches for exactly that combination — engine socket up, engine says
 offline, a Universal Audio device present in Core Audio — and when it has held
 for **60 seconds** restarts the engine with the same `launchctl kickstart -k
-gui/<uid>/com.uaudio.ua_mixer_engine` the watchdog uses. The engine is listening
+gui/<uid>/com.uaudio.ua_mixer_engine` Mac Daddy's UA watchdog uses. The engine is listening
 again within a couple of seconds, re-enumerates, and the app reconnects on its
 own. A notification says it happened, and the menu shows *Mixer engine restarted
 HH:MM to recover the Apollo* for the next hour.
@@ -282,8 +247,8 @@ Guards, so it cannot make things worse:
 - **Wake restarts the 60 s clock**, so the engine's own re-enumeration after
   sleep — which takes tens of seconds — is never pre-empted.
 - An Apollo that is actually unplugged has no Core Audio device, so the engine is
-  right and nothing is restarted. Engine not running at all is the watchdog's
-  department, not this one's.
+  right and nothing is restarted. Engine not running at all is Mac Daddy's
+  UA watchdog's department, not this one's.
 
 While the condition is detected the menu says so, with the countdown, and offers
 **Restart UA Mixer Engine** to skip the wait. The item is also there whenever the
@@ -338,8 +303,6 @@ matters.)
 ## Design notes
 
 [`docs/superpowers/specs/2026-07-29-apollo-monitor-menubar-design.md`](docs/superpowers/specs/2026-07-29-apollo-monitor-menubar-design.md)
-— and, for the watchdog,
-[`2026-08-08-ua-watchdog-vendoring-design.md`](docs/superpowers/specs/2026-08-08-ua-watchdog-vendoring-design.md)
 
 ## Releasing
 
@@ -385,10 +348,10 @@ colour, and cooperative hiding so no icon strands another.
 | App | What it does |
 |---|---|
 | [Claude Usage](https://github.com/nicholaspsmith/claude-usage-menubar) | Claude Code plan limits, resets, and live agent sessions |
-| **Apollo Monitor** | Apollo audio-interface monitor level, plus a mixer-process watchdog |
+| **Apollo Monitor** | Apollo audio-interface monitor level |
 | [Battery Time](https://github.com/nicholaspsmith/battery-time-menubar) | Time remaining, power mode, and 24h usage |
 | [VPN & DNS](https://github.com/nicholaspsmith/vpn-dns-menubar) | A chameleon for Mullvad + Tailscale state, with a DNS watcher |
-| [Mac Daddy](https://github.com/nicholaspsmith/mac-daddy-menubar) | Kills media trackers, trashes stale downloads, reaps hung processes, and sweats as your process count climbs |
+| [Mac Daddy](https://github.com/nicholaspsmith/mac-daddy-menubar) | Kills media trackers, trashes stale downloads, reaps hung processes, watches the UA mixer engine, and sweats as your process count climbs |
 | [KeyLight](https://github.com/nicholaspsmith/keylight-menubar) | Ctrl+brightness keys remapped to keyboard backlight |
 | [MacRecorder](https://github.com/nicholaspsmith/MacRecorder) | Screen recording with system audio |
 | [Barn](https://github.com/nicholaspsmith/menubar-barn) | Sunset: macOS 26 and earlier only. Hid a block of status icons by width; on macOS 27 use System Settings ▸ Menu Bar |

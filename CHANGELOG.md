@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [Unreleased]
+
+- Removed: the Mixer Watchdog submenu and the `ua-watchdog` LaunchAgent it controlled — the watchdog now lives in [Mac Daddy](https://github.com/nicholaspsmith/mac-daddy-menubar), whose installer retires the old agent. `install.sh` no longer installs it, and leaves an existing agent running until Mac Daddy takes over
+
 ## [1.1.0] - 2026-09-28
 
 - The menu-bar icon hides itself while no Universal Audio device is connected, and comes back the moment one appears
