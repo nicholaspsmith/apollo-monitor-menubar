@@ -42,11 +42,7 @@ final class App: NSObject, NSApplicationDelegate {
     private var tap: HotkeyTap!
     private var trustTimer: Timer?
 
-    /// Folded-in Mixer Watchdog surface (a submenu, not a separate app): the launchd
-    /// controller, the last status shown (so the toggle knows enable vs disable),
-    /// and a clock formatter for the "last kill" time.
-    private let watchdog = WatchdogController()
-    private var watchdogStatus: WatchdogStatus?
+    /// Clock time for the engine-recovery rows ("restarted 14:02").
     private let clockFormatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
@@ -375,10 +371,6 @@ final class App: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
-        menu.addItem(watchdogMenuItem())
-
-        menu.addItem(.separator())
-
         let overlay = actionItem("Show Volume Overlay", #selector(toggleOverlay))
         overlay.state = overlayPreference.isEnabled ? .on : .off
         menu.addItem(overlay)
@@ -451,62 +443,6 @@ final class App: NSObject, NSApplicationDelegate {
         return item
     }
 
-    // MARK: - Mixer Watchdog submenu
-
-    /// The folded-in Mixer Watchdog surface: its state on the parent item's shield
-    /// icon, and a submenu with details + a persistent Disable/Enable toggle. State
-    /// is read fresh here (once per menu open), so nothing polls while the menu is
-    /// closed.
-    private func watchdogMenuItem() -> NSMenuItem {
-        let status = watchdog.status()
-        watchdogStatus = status
-
-        let item = NSMenuItem(title: "Mixer Watchdog", action: nil, keyEquivalent: "")
-        item.isEnabled = true
-        item.image = WatchdogIcon.image(for: status.state)
-
-        let submenu = NSMenu()
-        submenu.autoenablesItems = false
-        submenu.addItem(infoItem(watchdogHeader(status), enabled: status.isEnabled))
-
-        let mono = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-        if let kill = status.lastKill {
-            let row = NSMenuItem()
-            row.view = MenuBuilder.textView(
-                "Last kill: \(kill.label) \(clockFormatter.string(from: kill.date))", font: mono
-            )
-            submenu.addItem(row)
-        }
-        let killsRow = NSMenuItem()
-        killsRow.view = MenuBuilder.textView("Kills today: \(status.killsToday)", font: mono)
-        submenu.addItem(killsRow)
-
-        submenu.addItem(.separator())
-        let toggle = actionItem(status.isEnabled ? "Disable watchdog" : "Enable watchdog",
-                                #selector(toggleWatchdog))
-        // With no plist there is nothing to bootstrap, so offer no action to click.
-        toggle.isEnabled = status.isToggleable
-        submenu.addItem(toggle)
-        submenu.addItem(actionItem("Show log…", #selector(showWatchdogLog)))
-
-        item.submenu = submenu
-        return item
-    }
-
-    private func watchdogHeader(_ status: WatchdogStatus) -> String {
-        switch status.state {
-        case .active:
-            if let age = status.heartbeatAge { return "✓ Mixer Watchdog active · checked \(RelativeTime.short(age)) ago" }
-            return "✓ Mixer Watchdog active"
-        case .disabled:
-            return "○ Mixer Watchdog disabled"
-        case .notInstalled:
-            return "○ Mixer Watchdog not installed — run ./install.sh"
-        case .problem(let reason):
-            return "⚠ Mixer Watchdog: \(reason)"
-        }
-    }
-
     // MARK: - Menu selectors
 
     @objc private func toggleMute() { engine.setMuted(!engine.state.muted) }
@@ -525,33 +461,6 @@ final class App: NSObject, NSApplicationDelegate {
         // Switching it off while it happens to be on screen should take it down
         // now, not leave it sitting there for its remaining second.
         if !overlayPreference.isEnabled { hud.dismiss() }
-    }
-
-    @objc private func toggleWatchdog() {
-        let wanted = !(watchdogStatus?.isEnabled ?? true)
-        guard let failedStep = watchdog.setEnabled(wanted) else { return }
-
-        // The menu re-reads status() on every open, so a failure recorded in the
-        // model would be overwritten before it could be seen. Say it out loud.
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = wanted ? "Couldn't enable the Mixer Watchdog"
-                                   : "Couldn't disable the Mixer Watchdog"
-        alert.informativeText = """
-        `launchctl \(failedStep)` failed for \(WatchdogPaths.label).
-
-        If the agent was never installed, run ./install.sh from the \
-        apollo-monitor-menubar checkout.
-        """
-        alert.runModal()
-    }
-
-    @objc private func showWatchdogLog() {
-        let path = WatchdogPaths.log(home: NSHomeDirectory())
-        let url = FileManager.default.fileExists(atPath: path)
-            ? URL(fileURLWithPath: path)
-            : URL(fileURLWithPath: (path as NSString).deletingLastPathComponent)
-        NSWorkspace.shared.open(url)
     }
 
     @objc private func pickIconStyle(_ sender: NSMenuItem) {

@@ -35,7 +35,7 @@ final class EngineRecoveryPolicyTests: XCTestCase {
     }
 
     func testSocketDownIsNotStale() {
-        // Engine not running is a different problem (and the watchdog's).
+        // Engine not running is a different problem (Mac Daddy's UA watchdog handles that).
         XCTAssertEqual(policy.update(socketDown, now: t0), .none)
         XCTAssertEqual(policy.update(socketDown, now: t0 + 600), .none)
     }
