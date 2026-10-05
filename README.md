@@ -4,7 +4,9 @@
 
 <p align="center">Part of <strong><a href="https://menumon.nicksmith.software">Menumon</a></strong>.</p>
 
-**Version 1.2.0** · [Changelog](https://github.com/nicholaspsmith/apollo-monitor-menubar/releases)
+<p align="center"><img src="docs/animation.png" alt="Apollo blinking"></p>
+
+**Version 1.3.0** · [Changelog](https://github.com/nicholaspsmith/apollo-monitor-menubar/releases)
 
 ![The Apollo Monitor menu](screenshots/menu.png)
 
@@ -50,6 +52,12 @@ hardware knob or in the Console app.
 It turns **grey whenever the level cannot be changed**: the mixer engine is not
 running, the Apollo is offline, the output is muted, or Accessibility has not
 been granted. The menu says which.
+
+Once a minute Apollo blinks (550 ms). When several Menumon mascots are running
+they take turns, a second apart: Archimedes (Claude Usage), Menu Pimp (Mac
+Daddy), Carol (SoundChain), Iguanamous (VPN & DNS), Armonitor (Monitor Lizard),
+Volta (Battery Time), then Apollo, counting only the ones that are running.
+Skipped when Reduce Motion is on.
 
 **Icon ▸ Arc** shows a green level arc instead; **Icon ▸ Apollo** restores the
 face. Both are full-colour images, not templates, so they keep their colour

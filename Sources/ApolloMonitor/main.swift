@@ -30,6 +30,16 @@ final class App: NSObject, NSApplicationDelegate {
     }
 
     private var status: StatusItemController!
+    /// Once a minute, in his turn with the other mascots, Apollo blinks.
+    private var minuteCue: MinuteCue!
+    private var blinkTime: TimeInterval?
+    private lazy var blinkAnimation = IconAnimation(duration: CharacterIcon.apolloBlinkDuration, frame: { [weak self] t in
+        self?.blinkTime = t
+        self?.refreshIcon()
+    }, completion: { [weak self] in
+        self?.blinkTime = nil
+        self?.refreshIcon()
+    })
     /// Gives up this item's width while Curtain reveals its hidden block, so the
     /// block has room to land; restores itself from the TTL if Curtain vanishes.
     private var yieldClient: YieldClient!
@@ -106,6 +116,11 @@ final class App: NSObject, NSApplicationDelegate {
         status.start()
         yieldClient = YieldClient(item: status)
         yieldClient.start()
+        minuteCue = MinuteCue { [weak self] in
+            guard IconStyle.current == .apollo else { return }
+            self?.blinkAnimation.start()
+        }
+        minuteCue.start()
 
         output.onPresenceChange = { [weak self] in self?.refreshIcon() }
         engine.onChange = { [weak self] state in self?.scheduleUIRefresh(state) }
@@ -291,7 +306,8 @@ final class App: NSObject, NSApplicationDelegate {
         // The arc is 18 points across, so changes finer than this cannot show.
         // Skipping identical redraws matters during a held key, when the level
         // changes several times a second.
-        let key = "\(Int((state.tapered * 200).rounded()))|\(live)|\(IconStyle.current.rawValue)"
+        let blink = blinkTime.map { CharacterIcon.apolloBlinkClosure(at: $0) } ?? 0
+        let key = "\(Int((state.tapered * 200).rounded()))|\(live)|\(IconStyle.current.rawValue)|\(Int(blink * 20))"
         guard key != lastIconKey else { return }
         lastIconKey = key
 
@@ -303,7 +319,7 @@ final class App: NSObject, NSApplicationDelegate {
         // Grey when the level cannot be changed — engine down, Apollo offline,
         // muted, or Accessibility not yet granted. The menu says which.
         if IconStyle.current == .apollo {
-            status.setIcon(CharacterIcon.apollo(level: fraction, online: live))
+            status.setIcon(CharacterIcon.apollo(level: fraction, online: live, blink: blink))
             return
         }
         status.setIcon(MeterIcon.arc(
