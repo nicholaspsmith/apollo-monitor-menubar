@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.3.0] - 2026-10-05
+
+- Apollo blinks once a minute, taking his turn with the other Menumon mascots. Skipped under Reduce Motion
+
 ## [1.2.0] - 2026-10-02
 
 - Removed: the Mixer Watchdog submenu and the `ua-watchdog` LaunchAgent it controlled — the watchdog now lives in [Mac Daddy](https://github.com/nicholaspsmith/mac-daddy-menubar), whose installer retires the old agent. `install.sh` no longer installs it, and leaves an existing agent running until Mac Daddy takes over
