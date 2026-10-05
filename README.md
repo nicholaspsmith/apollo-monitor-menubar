@@ -53,7 +53,7 @@ It turns **grey whenever the level cannot be changed**: the mixer engine is not
 running, the Apollo is offline, the output is muted, or Accessibility has not
 been granted. The menu says which.
 
-Once a minute Apollo blinks (550 ms). When several Menumon mascots are running
+Now and then Apollo blinks (550 ms). When several Menumon mascots are running
 they take turns, a second apart: Archimedes (Claude Usage), Menu Pimp (Mac
 Daddy), Carol (SoundChain), Iguanamous (VPN & DNS), Armonitor (Monitor Lizard),
 Volta (Battery Time), then Apollo, counting only the ones that are running.
