@@ -6,7 +6,7 @@
 
 <p align="center"><img src="docs/animation.png" alt="Apollo blinking"></p>
 
-**Version 1.3.0** · [Changelog](https://github.com/nicholaspsmith/apollo-monitor-menubar/releases)
+**Version 1.4.0** · [Changelog](https://github.com/nicholaspsmith/apollo-monitor-menubar/releases)
 
 ![The Apollo Monitor menu](screenshots/menu.png)
 
@@ -26,14 +26,23 @@ Built on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) and
 │  Mute                          │
 │  Dim                           │
 ├────────────────────────────────┤
+│  Settings                    ▸ │
+│  Quit Apollo Monitor        ⌘Q │
+└────────────────────────────────┘
+
+Settings ▸
+┌────────────────────────────────┐
 │  Show Volume Overlay         ✓ │
+├────────────────────────────────┤
 │  Icon                        ▸ │
 │  Start at Login              ✓ │
 ├────────────────────────────────┤
 │  Version X.Y.Z                 │
-│  Quit Apollo Monitor        ⌘Q │
 └────────────────────────────────┘
 ```
+
+**Settings ▸** is StatusItemKit's shared `SettingsMenu`: the app's own
+preferences on top, then Icon and Start at Login, then the version.
 
 When relevant the menu also shows [engine recovery](#engine-recovery) status
 and **Restart UA Mixer Engine**, **⚠ Grant Accessibility…**, or "Volume keys:
@@ -59,7 +68,7 @@ Daddy), Carol (SoundChain), Iguanamous (VPN & DNS), Armonitor (Monitor Lizard),
 Volta (Battery Time), then Apollo, counting only the ones that are running.
 Skipped when Reduce Motion is on.
 
-**Icon ▸ Arc** shows a green level arc instead; **Icon ▸ Apollo** restores the
+**Settings ▸ Icon ▸ Arc** shows a green level arc instead; **Icon ▸ Apollo** restores the
 face. Both are full-colour images, not templates, so they keep their colour
 when the menu opens.
 
@@ -107,7 +116,7 @@ Run the tests with `swift test`.
 |---|---|
 | **Volume up / down keys** | Monitor level ±1 dB per press; a held key accelerates |
 | **Mute key** | Mutes and unmutes the monitor output |
-| Click the icon | Slider, Mute, Dim, [engine recovery](#engine-recovery) when needed, overlay switch, Icon, Start at Login |
+| Click the icon | Slider, Mute, Dim, [engine recovery](#engine-recovery) when needed; **Settings ▸** holds the overlay switch, Icon and Start at Login |
 | `ApolloMonitor --step up\|down` | Adjust once and exit; needs no Accessibility |
 | `ApolloMonitor --login on\|off\|status` | Start at Login from the shell (what `install.sh` runs when you say yes) |
 
@@ -143,8 +152,8 @@ name, a level bar and the exact dB. It is a non-activating borderless panel
 that ignores the mouse and fades after 1.4 s.
 
 It follows the *level*, not the keypress, so turning the hardware knob or
-Console's fader shows it too. Dragging the menu slider does not. **Show Volume
-Overlay** turns it off and on; the choice persists.
+Console's fader shows it too. Dragging the menu slider does not. **Settings ▸ Show
+Volume Overlay** turns it off and on; the choice persists.
 
 The panel is rebuilt on wake, on screen-configuration changes, and after five
 minutes unused. A long-running instance was once seen to stop putting the
