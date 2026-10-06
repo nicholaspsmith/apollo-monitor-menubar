@@ -1,6 +1,6 @@
 # Apollo Monitor
 
-<p align="center"><img src="docs/mascot.png" width="160" alt="Apollo Monitor mascot, from Menumon"></p>
+<p align="center"><img src="docs/mascot.png" width="160" alt="Apollo, Apollo Monitor's menu-bar character, on its app icon"></p>
 
 <p align="center">Part of <strong><a href="https://menumon.nicksmith.software">Menumon</a></strong>.</p>
 
