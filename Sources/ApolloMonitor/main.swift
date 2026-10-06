@@ -385,12 +385,17 @@ final class App: NSObject, NSApplicationDelegate {
             menu.addItem(infoItem("Volume keys: system output isn't the Apollo", enabled: false))
         }
 
-        menu.addItem(.separator())
+        SettingsMenu.addFooter(to: menu, appName: "Apollo Monitor", items: { [self] submenu in
+            let overlay = actionItem("Show Volume Overlay", #selector(toggleOverlay))
+            overlay.state = overlayPreference.isEnabled ? .on : .off
+            submenu.addItem(overlay)
+            submenu.addItem(.separator())
+            submenu.addItem(iconStyleItem())
+        })
+    }
 
-        let overlay = actionItem("Show Volume Overlay", #selector(toggleOverlay))
-        overlay.state = overlayPreference.isEnabled ? .on : .off
-        menu.addItem(overlay)
-
+    /// Apollo Monitor's own icon picker: the Apollo face or the plain arc.
+    private func iconStyleItem() -> NSMenuItem {
         let iconHeader = NSMenuItem(title: "Icon", action: nil, keyEquivalent: "")
         let iconSub = NSMenu()
         for style in IconStyle.allCases {
@@ -401,15 +406,7 @@ final class App: NSObject, NSApplicationDelegate {
             iconSub.addItem(item)
         }
         iconHeader.submenu = iconSub
-        menu.addItem(iconHeader)
-
-        let login = actionItem("Start at Login", #selector(toggleLogin))
-        login.state = LoginItem.isEnabled ? .on : .off
-        menu.addItem(login)
-
-        menu.addItem(.separator())
-        menu.addItem(AppVersion.menuItem())
-        menu.addItem(actionItem("Quit Apollo Monitor", #selector(quit), key: "q"))
+        return iconHeader
     }
 
     /// Engine recovery, shown only while it is relevant: the engine says the Apollo
@@ -485,10 +482,6 @@ final class App: NSObject, NSApplicationDelegate {
         lastIconKey = nil
         refreshIcon()
     }
-
-    @objc private func toggleLogin() { LoginItem.toggle() }
-
-    @objc private func quit() { NSApp.terminate(nil) }
 }
 
 // MARK: - Headless one-shot mode
