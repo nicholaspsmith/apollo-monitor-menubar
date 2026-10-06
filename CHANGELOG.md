@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.4.2] - 2026-10-06
+
+- Ticking a checkbox in the menu no longer closes it: Mute, Dim and Settings ▸ Show Volume Overlay stay open, and Mute and Dim follow the Apollo while the menu is up
+
 ## [1.4.1] - 2026-10-05
 
 - New app icon: Apollo as he looks in the menu bar
