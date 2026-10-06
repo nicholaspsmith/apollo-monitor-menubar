@@ -96,6 +96,8 @@ final class App: NSObject, NSApplicationDelegate {
     /// The slider inside the currently-open menu, if any, so pushes from the
     /// hardware knob move it while the user is looking at it.
     private weak var sliderView: VolumeSliderView?
+    private weak var muteView: ToggleMenuItemView?
+    private weak var dimView: ToggleMenuItemView?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         status = StatusItemController(
@@ -256,8 +258,18 @@ final class App: NSObject, NSApplicationDelegate {
             self.sliderView?.apply(
                 tapered: state.tapered, db: state.db, isLive: state.isLive
             )
+            self.applyToggles(state)
             self.showOverlayIfStateChanged(state)
             self.evaluateRecovery()
+        }
+    }
+
+    /// Keeps the open menu's Mute and Dim ticks on the engine's state.
+    private func applyToggles(_ state: MonitorState) {
+        for (view, on) in [(muteView, state.muted), (dimView, state.dimmed)] {
+            guard let view else { continue }
+            if view.isOn != on { view.isOn = on }
+            if view.isEnabled != state.isLive { view.isEnabled = state.isLive }
         }
     }
 
@@ -362,14 +374,18 @@ final class App: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
-        let mute = actionItem("Mute", #selector(toggleMute))
-        mute.state = state.muted ? .on : .off
-        mute.isEnabled = state.isLive
+        // Keep-open checkboxes: ticking Mute or Dim leaves the menu up, and the
+        // ticks follow the engine (knob, Console, volume keys) while it is.
+        let mute = ToggleMenuItem.make(title: "Mute", isOn: state.muted, enabled: state.isLive) { [weak self] on in
+            self?.engine.setMuted(on)
+        }
+        muteView = ToggleMenuItem.view(of: mute)
         menu.addItem(mute)
 
-        let dim = actionItem("Dim", #selector(toggleDim))
-        dim.state = state.dimmed ? .on : .off
-        dim.isEnabled = state.isLive
+        let dim = ToggleMenuItem.make(title: "Dim", isOn: state.dimmed, enabled: state.isLive) { [weak self] on in
+            self?.engine.setDimmed(on)
+        }
+        dimView = ToggleMenuItem.view(of: dim)
         menu.addItem(dim)
 
         addRecoveryItems(to: menu, state: state)
@@ -386,9 +402,9 @@ final class App: NSObject, NSApplicationDelegate {
         }
 
         SettingsMenu.addFooter(to: menu, appName: "Apollo Monitor", items: { [self] submenu in
-            let overlay = actionItem("Show Volume Overlay", #selector(toggleOverlay))
-            overlay.state = overlayPreference.isEnabled ? .on : .off
-            submenu.addItem(overlay)
+            submenu.addItem(ToggleMenuItem.make(title: "Show Volume Overlay", isOn: overlayPreference.isEnabled) { [weak self] on in
+                self?.setOverlay(on)
+            })
             submenu.addItem(.separator())
             submenu.addItem(iconStyleItem())
         })
@@ -458,10 +474,6 @@ final class App: NSObject, NSApplicationDelegate {
 
     // MARK: - Menu selectors
 
-    @objc private func toggleMute() { engine.setMuted(!engine.state.muted) }
-
-    @objc private func toggleDim() { engine.setDimmed(!engine.state.dimmed) }
-
     @objc private func restartEngine() { recovery.restartNow() }
 
     @objc private func grantTrust() {
@@ -469,8 +481,8 @@ final class App: NSObject, NSApplicationDelegate {
         startTapIfPossible()
     }
 
-    @objc private func toggleOverlay() {
-        overlayPreference.isEnabled.toggle()
+    private func setOverlay(_ on: Bool) {
+        overlayPreference.isEnabled = on
         // Switching it off while it happens to be on screen should take it down
         // now, not leave it sitting there for its remaining second.
         if !overlayPreference.isEnabled { hud.dismiss() }
