@@ -40,11 +40,26 @@ final class App: NSObject, NSApplicationDelegate {
         self?.blinkTime = nil
         self?.refreshIcon()
     })
-    /// While the Apollo is dimmed the lit ticks pulse, half a second dimmed and
-    /// half a second full green. Runs only while dim is on.
-    /// The low phase is 75% green, not off: it should read as a pulse.
+    /// While the Apollo is dimmed the lit ticks pulse, 0.5625 s at 75% green
+    /// and 0.5625 s full green, easing between the two rather than snapping.
+    /// Runs only while dim is on.
     private var dimPulseTimer: Timer?
     private var dimPulseLow = false
+    /// The lit ticks' current opacity, 0.75 … 1, as the fade moves it.
+    private var dimPulseAlpha: CGFloat = 1
+    private var dimPulseFrom: CGFloat = 1
+    private lazy var dimPulseFade = IconAnimation(duration: 0.18, frame: { [weak self] t in
+        guard let self else { return }
+        let p = t / 0.18
+        let eased = CGFloat(p * p * (3 - 2 * p))   // smoothstep: ease in and out
+        self.dimPulseAlpha = self.dimPulseFrom + (self.dimPulseTarget - self.dimPulseFrom) * eased
+        self.refreshIcon()
+    }, completion: { [weak self] in
+        guard let self else { return }
+        self.dimPulseAlpha = self.dimPulseTarget
+        self.refreshIcon()
+    })
+    private var dimPulseTarget: CGFloat { dimPulseLow ? 0.75 : 1 }
     /// Gives up this item's width while Curtain reveals its hidden block, so the
     /// block has room to land; restores itself from the TTL if Curtain vanishes.
     private var yieldClient: YieldClient!
@@ -322,13 +337,13 @@ final class App: NSObject, NSApplicationDelegate {
         updateDimPulse(live && state.dimmed && !state.muted)
         // Muted reads red; dimmed pulses the green (muted wins when both are on).
         let tickColor: NSColor = state.muted ? .systemRed
-            : dimPulseLow ? NSColor.systemGreen.withAlphaComponent(0.75) : .systemGreen
+            : NSColor.systemGreen.withAlphaComponent(dimPulseAlpha)
 
         // The arc is 18 points across, so changes finer than this cannot show.
         // Skipping identical redraws matters during a held key, when the level
         // changes several times a second.
         let blink = blinkTime.map { CharacterIcon.apolloBlinkClosure(at: $0) } ?? 0
-        let key = "\(Int((state.tapered * 200).rounded()))|\(live)|\(state.muted)|\(dimPulseLow)|\(IconStyle.current.rawValue)|\(Int(blink * 20))"
+        let key = "\(Int((state.tapered * 200).rounded()))|\(live)|\(state.muted)|\(Int(dimPulseAlpha * 100))|\(IconStyle.current.rawValue)|\(Int(blink * 20))"
         guard key != lastIconKey else { return }
         lastIconKey = key
 
@@ -353,14 +368,18 @@ final class App: NSObject, NSApplicationDelegate {
         guard on else {
             dimPulseTimer?.invalidate()
             dimPulseTimer = nil
+            dimPulseFade.cancel()
             dimPulseLow = false
+            dimPulseAlpha = 1
             return
         }
         guard dimPulseTimer == nil else { return }
-        dimPulseTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+        dimPulseTimer = Timer.scheduledTimer(withTimeInterval: 0.5625, repeats: true) { [weak self] _ in
             guard let self else { return }
+            self.dimPulseFade.cancel()
+            self.dimPulseFrom = self.dimPulseAlpha
             self.dimPulseLow.toggle()
-            self.refreshIcon()
+            self.dimPulseFade.start()
         }
     }
 
