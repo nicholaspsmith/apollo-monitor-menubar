@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.4.4] - 2026-10-07
+
+- Dimmed, the ticks now pulse between 75% and full green instead of nearly fading out
+
 ## [1.4.3] - 2026-10-07
 
 - Muted, the arc's lit ticks turn red instead of the whole icon going grey

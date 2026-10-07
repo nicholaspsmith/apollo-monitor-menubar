@@ -42,6 +42,7 @@ final class App: NSObject, NSApplicationDelegate {
     })
     /// While the Apollo is dimmed the lit ticks pulse, half a second dimmed and
     /// half a second full green. Runs only while dim is on.
+    /// The low phase is 75% green, not off: it should read as a pulse.
     private var dimPulseTimer: Timer?
     private var dimPulseLow = false
     /// Gives up this item's width while Curtain reveals its hidden block, so the
@@ -321,7 +322,7 @@ final class App: NSObject, NSApplicationDelegate {
         updateDimPulse(live && state.dimmed && !state.muted)
         // Muted reads red; dimmed pulses the green (muted wins when both are on).
         let tickColor: NSColor = state.muted ? .systemRed
-            : dimPulseLow ? NSColor.systemGreen.withAlphaComponent(0.35) : .systemGreen
+            : dimPulseLow ? NSColor.systemGreen.withAlphaComponent(0.75) : .systemGreen
 
         // The arc is 18 points across, so changes finer than this cannot show.
         // Skipping identical redraws matters during a held key, when the level
