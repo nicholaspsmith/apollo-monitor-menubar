@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.6.0] - 2026-10-07
+
+- Dimmed, the ticks ease between 75% and full green over a fraction of a second instead of snapping, and pulse 12.5% slower (0.5625 s each way)
+
 ## [1.5.0] - 2026-10-07
 
 - The Apollo icon in the menu bar can now display muted or dimmed states directly within its arc using a customizable tick color.
