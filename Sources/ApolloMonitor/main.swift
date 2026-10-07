@@ -40,6 +40,10 @@ final class App: NSObject, NSApplicationDelegate {
         self?.blinkTime = nil
         self?.refreshIcon()
     })
+    /// While the Apollo is dimmed the lit ticks pulse, half a second dimmed and
+    /// half a second full green. Runs only while dim is on.
+    private var dimPulseTimer: Timer?
+    private var dimPulseLow = false
     /// Gives up this item's width while Curtain reveals its hidden block, so the
     /// block has room to land; restores itself from the TTL if Curtain vanishes.
     private var yieldClient: YieldClient!
@@ -282,7 +286,7 @@ final class App: NSObject, NSApplicationDelegate {
     /// the same readout. Driven off dB rather than the tapered position because dB
     /// changes on every single press, and off mute because muting changes no level
     /// at all — without it the mute key would have no visible effect beyond the
-    /// menu-bar arc going grey.
+    /// menu-bar arc turning red.
     private func showOverlayIfStateChanged(_ state: MonitorState) {
         guard state.isLive else { return }
 
@@ -313,13 +317,17 @@ final class App: NSObject, NSApplicationDelegate {
         status.isSuppressed = !output.isUniversalAudioPresent
         let state = engine.state
         let fraction = CGFloat(state.tapered)
-        let live = state.isLive && !state.muted && tap?.isRunning == true
+        let live = state.isLive && tap?.isRunning == true
+        updateDimPulse(live && state.dimmed && !state.muted)
+        // Muted reads red; dimmed pulses the green (muted wins when both are on).
+        let tickColor: NSColor = state.muted ? .systemRed
+            : dimPulseLow ? NSColor.systemGreen.withAlphaComponent(0.35) : .systemGreen
 
         // The arc is 18 points across, so changes finer than this cannot show.
         // Skipping identical redraws matters during a held key, when the level
         // changes several times a second.
         let blink = blinkTime.map { CharacterIcon.apolloBlinkClosure(at: $0) } ?? 0
-        let key = "\(Int((state.tapered * 200).rounded()))|\(live)|\(IconStyle.current.rawValue)|\(Int(blink * 20))"
+        let key = "\(Int((state.tapered * 200).rounded()))|\(live)|\(state.muted)|\(dimPulseLow)|\(IconStyle.current.rawValue)|\(Int(blink * 20))"
         guard key != lastIconKey else { return }
         lastIconKey = key
 
@@ -329,15 +337,30 @@ final class App: NSObject, NSApplicationDelegate {
         // solid green fill, and stays legible on a light or dark menu bar.
         //
         // Grey when the level cannot be changed — engine down, Apollo offline,
-        // muted, or Accessibility not yet granted. The menu says which.
+        // or Accessibility not yet granted. The menu says which.
         if IconStyle.current == .apollo {
-            status.setIcon(CharacterIcon.apollo(level: fraction, online: live, blink: blink))
+            status.setIcon(CharacterIcon.apollo(level: fraction, online: live, blink: blink, tickColor: tickColor))
             return
         }
         status.setIcon(MeterIcon.arc(
             fraction: fraction,
-            color: live ? .systemGreen : .systemGray
+            color: live ? tickColor : .systemGray
         ))
+    }
+
+    private func updateDimPulse(_ on: Bool) {
+        guard on else {
+            dimPulseTimer?.invalidate()
+            dimPulseTimer = nil
+            dimPulseLow = false
+            return
+        }
+        guard dimPulseTimer == nil else { return }
+        dimPulseTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            self.dimPulseLow.toggle()
+            self.refreshIcon()
+        }
     }
 
     private func buildMenu(_ menu: NSMenu) {

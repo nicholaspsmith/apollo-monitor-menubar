@@ -8,6 +8,11 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.4.3] - 2026-10-07
+
+- Muted, the arc's lit ticks turn red instead of the whole icon going grey
+- Dimmed, the lit ticks pulse: half a second dimmed green, half a second full green
+
 ## [1.4.2] - 2026-10-06
 
 - Ticking a checkbox in the menu no longer closes it: Mute, Dim and Settings ▸ Show Volume Overlay stay open, and Mute and Dim follow the Apollo while the menu is up
