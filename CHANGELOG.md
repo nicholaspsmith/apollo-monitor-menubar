@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.8.0] - 2026-10-09
+
+- Carol's caterpillar icon now shows her headphones around her neck when SoundChain is not keeping them connected to this Mac.
+
 ## [1.7.0] - 2026-10-08
 
 - No user-visible changes.
