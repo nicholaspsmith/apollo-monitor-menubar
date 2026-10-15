@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.11.0] - 2026-10-15
+
+- Carol now sleeps in the menu bar, with her eyes closing, body breathing, and Zs floating above her.
+
 ## [1.10.0] - 2026-10-15
 
 - Carol's headband no longer gets cut off at the top of the icon, and her head movement is now smoother and contained within the menu bar space.
