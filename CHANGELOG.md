@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.10.0] - 2026-10-15
+
+- No user-visible changes.
+
 ## [1.9.0] - 2026-10-15
 
 - The caterpillar icon in the menu bar now supports a new walking animation, featuring a smooth, rolling motion that is distinct from its previous running animation.
