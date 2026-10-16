@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.12.0] - 2026-10-15
+
+- The owl icon now supports custom pupil colors, allowing users to choose their preferred color instead of the default green-to-red gradient.
+
 ## [1.11.0] - 2026-10-15
 
 - Carol now sleeps in the menu bar, with her eyes closing, body breathing, and Zs floating above her.
