@@ -22,6 +22,18 @@ fi
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_NAME="Apollo Monitor.app"
 
+# Parity hand-off: where parity syncs this app it owns ~/Applications, and a
+# build here would be a second copy LaunchServices can launch instead
+# (StatusItemKit README, "Parity"). PARITY=off ./install.sh builds here anyway.
+parity_handoff() {   # 0 = parity installed it; 1 = build it here; exits if the hand-off failed
+    local kit status=0
+    kit="$(cd "$(dirname "$0")/.." && pwd)/StatusItemKit/scripts/parity/handoff.sh"
+    [ -x "$kit" ] || return 1
+    "$kit" "$(cd "$(dirname "$0")" && pwd)" || status=$?
+    case "$status" in 0) return 0 ;; 10) return 1 ;; *) exit "$status" ;; esac
+}
+if parity_handoff; then exit 0; fi
+
 "$SRC_DIR/scripts/build-app.sh"
 
 mkdir -p "$HOME/Applications"
