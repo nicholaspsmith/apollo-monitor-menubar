@@ -6,7 +6,7 @@
 
 <p align="center"><img src="docs/animation.png" alt="Apollo blinking"></p>
 
-**Version 1.4.0** · [Changelog](https://github.com/nicholaspsmith/apollo-monitor-menubar/releases)
+**Version 1.13.1** · [Changelog](https://github.com/nicholaspsmith/apollo-monitor-menubar/releases)
 
 ![The Apollo Monitor menu](screenshots/menu.png)
 
