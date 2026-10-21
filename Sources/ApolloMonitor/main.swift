@@ -448,8 +448,9 @@ final class App: NSObject, NSApplicationDelegate {
             submenu.addItem(ToggleMenuItem.make(title: "Show Volume Overlay", isOn: overlayPreference.isEnabled) { [weak self] on in
                 self?.setOverlay(on)
             })
-            submenu.addItem(.separator())
-            submenu.addItem(iconStyleItem())
+        }, belowSettings: { [self] menu in
+            // Icon sits in the main menu, right below Settings.
+            menu.addItem(iconStyleItem())
         })
     }
 
