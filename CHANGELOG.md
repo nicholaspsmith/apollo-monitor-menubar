@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.16.0] - 2026-11-02
+
+- No user-visible changes.
+
 ## [1.15.0] - 2026-11-01
 
 - The minute cue no longer waits for Monitor Lizard, so the apps after it each move up a second
