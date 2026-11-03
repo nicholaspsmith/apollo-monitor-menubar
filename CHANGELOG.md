@@ -8,6 +8,12 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.19.0] - 2026-11-03
+
+- Preferences are now accessed via a dedicated window (⌘,) instead of a submenu, featuring grouped settings, a login toggle, and an icon picker.
+- Menus can now stay open after selecting an option, and sections can be collapsed to hide rows.
+- Read-only information rows in menus are now displayed in grey text.
+
 ## [1.18.0] - 2026-11-03
 
 - Settings move to a Preferences window: the menu now ends with **Preferences…** (⌘,) and **Quit Apollo Monitor**, with no Settings or Icon submenu. The **Apollo Monitor Preferences** window holds Start at Login, Show Volume Overlay and the menu-bar icon, shown as tiles drawn as they look in the bar. Esc or ⌘W closes it. Your existing choices carry over.
