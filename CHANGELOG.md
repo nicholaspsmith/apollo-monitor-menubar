@@ -8,9 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
-## [1.16.1] - 2026-11-02
+## [1.17.0] - 2026-11-02
 
-- The menu bar icon now displays the current level in grey when the app is offline or lacks permissions, instead of showing a dark icon.
+- Holding modifier keys like ⌘⌥ now registers correctly for gestures without the fn key interfering.
+- The menu bar icon continues to display the current level in grey when Accessibility permissions are missing or the engine is unreachable, rather than going dark.
 
 ## [1.16.0] - 2026-11-02
 
