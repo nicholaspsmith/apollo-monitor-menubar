@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.16.1] - 2026-11-02
+
+- The menu bar icon now displays the current level in grey when the app is offline or lacks permissions, instead of showing a dark icon.
+
 ## [1.16.0] - 2026-11-02
 
 - No user-visible changes.
