@@ -8,6 +8,11 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.17.0] - 2026-11-02
+
+- Holding modifier keys like ⌘⌥ now registers correctly for gestures without the fn key interfering.
+- The menu bar icon continues to display the current level in grey when Accessibility permissions are missing or the engine is unreachable, rather than going dark.
+
 ## [1.16.0] - 2026-11-02
 
 - No user-visible changes.
