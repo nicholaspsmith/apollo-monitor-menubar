@@ -8,6 +8,14 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.19.0] - 2026-11-03
+
+- The status dot in keep-open menu rows now aligns with other items instead of being pushed to the right.
+- Long keep-open menu rows with status dots are no longer clipped at the end.
+- The Settings submenu has been replaced by a standard Preferences window (⌘,) featuring grouped settings, a start-at-login toggle, and an icon picker.
+- Menus now stay open when selecting options (except for Quit and "…" items), and new collapsible section headings allow you to fold away groups of menu rows.
+- Read-only information rows in the menu now always appear in grey text, even when added while the menu is open.
+
 ## [1.18.0] - 2026-11-03
 
 - Settings move to a Preferences window: the menu now ends with **Preferences…** (⌘,) and **Quit Apollo Monitor**, with no Settings or Icon submenu. The **Apollo Monitor Preferences** window holds Start at Login, Show Volume Overlay and the menu-bar icon, shown as tiles drawn as they look in the bar. Esc or ⌘W closes it. Your existing choices carry over.
