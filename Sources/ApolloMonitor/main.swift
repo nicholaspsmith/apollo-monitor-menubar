@@ -95,17 +95,12 @@ final class App: NSObject, NSApplicationDelegate {
     /// What the menu-bar icon was last drawn from, to skip identical redraws.
     private var lastIconKey: String?
 
-    /// The Apollo face (tick arc = level) or the plain arc. Persisted; the old
-    /// "rocket" value maps to the face.
-    enum IconStyle: String, CaseIterable {
-        case apollo, arc
-        var title: String { self == .apollo ? "Apollo" : "Arc" }
-        private static let key = "iconStyle"
-        static var current: IconStyle {
-            get { UserDefaults.standard.string(forKey: key).flatMap(IconStyle.init) ?? .apollo }
-            set { UserDefaults.standard.set(newValue.rawValue, forKey: key) }
-        }
-    }
+    /// Menu ▸ Preferences… (⌘,): Start at Login, the overlay and the icon.
+    private lazy var preferences = PreferencesPane.apolloMonitor(model: PreferencesModel(
+        overlayPreference: overlayPreference,
+        onOverlay: { [weak self] on in self?.setOverlay(on) },
+        onIconStyle: { [weak self] style in self?.setIconStyle(style) }
+    ))
     /// Cadence tracking for hold acceleration.
     private var lastPressAt: Date?
     private var consecutiveRepeats = 0
@@ -387,11 +382,12 @@ final class App: NSObject, NSApplicationDelegate {
         let state = engine.state
 
         // Take over enabling. AppKit's automatic version disables anything with a
-        // nil action, which greys out the status line and the slider row even when
-        // the Apollo is connected and both are perfectly current.
+        // nil action, which greys out the slider row even when the Apollo is
+        // connected and it is perfectly usable.
         menu.autoenablesItems = false
 
-        menu.addItem(infoItem(state.statusLine, enabled: state.isLive))
+        // Read-only, so grey like every other row you cannot click.
+        menu.addItem(InfoMenuItem.make(state.statusLine))
 
         let sliderItem = NSMenuItem()
         let slider = VolumeSliderView(
@@ -440,33 +436,16 @@ final class App: NSObject, NSApplicationDelegate {
             // Otherwise "my volume keys stopped controlling the Apollo" is a
             // mystery with no visible cause.
             menu.addItem(.separator())
-            // Genuinely an inactive state, so this one stays muted.
-            menu.addItem(infoItem("Volume keys: system output isn't the Apollo", enabled: false))
+            menu.addItem(InfoMenuItem.make("Volume keys: system output isn't the Apollo"))
         }
 
-        SettingsMenu.addFooter(to: menu, appName: "Apollo Monitor", items: { [self] submenu in
-            submenu.addItem(ToggleMenuItem.make(title: "Show Volume Overlay", isOn: overlayPreference.isEnabled) { [weak self] on in
-                self?.setOverlay(on)
-            })
-        }, belowSettings: { [self] menu in
-            // Icon sits in the main menu, right below Settings.
-            menu.addItem(iconStyleItem())
-        })
-    }
-
-    /// Apollo Monitor's own icon picker: the Apollo face or the plain arc.
-    private func iconStyleItem() -> NSMenuItem {
-        let iconHeader = NSMenuItem(title: "Icon", action: nil, keyEquivalent: "")
-        let iconSub = NSMenu()
-        for style in IconStyle.allCases {
-            let item = NSMenuItem(title: style.title, action: #selector(pickIconStyle(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = style.rawValue
-            item.state = style == IconStyle.current ? .on : .off
-            iconSub.addItem(item)
+        PreferencesMenu.addFooter(to: menu, appName: "Apollo Monitor") { [weak self] in
+            self?.preferences.show()
         }
-        iconHeader.submenu = iconSub
-        return iconHeader
+
+        // Every option leaves the menu open (Mute and Dim already do, as
+        // ToggleMenuItems); Quit and the "…" items, which open something, close it.
+        KeepOpenMenu.apply(to: menu.items)
     }
 
     /// Engine recovery, shown only while it is relevant: the engine says the Apollo
@@ -488,26 +467,18 @@ final class App: NSObject, NSApplicationDelegate {
             } else {
                 line = "Apollo is present but the mixer engine lost it"
             }
-            menu.addItem(infoItem(line, enabled: false))
+            menu.addItem(InfoMenuItem.make(line))
         }
         if let recent {
             let when = clockFormatter.string(from: recent.date)
             let line = recent.succeeded
                 ? "Mixer engine restarted \(when)\(recent.manual ? "" : " to recover the Apollo")"
                 : "⚠ Mixer engine restart failed \(when)"
-            menu.addItem(infoItem(line, enabled: false))
+            menu.addItem(InfoMenuItem.make(line))
         }
         if state.socketConnected && !state.isLive {
-            menu.addItem(actionItem("Restart UA Mixer Engine", #selector(restartEngine)))
+            menu.addItem(actionItem("Restart UA Mixer Engine", #selector(restartEngine(_:))))
         }
-    }
-
-    /// A non-clickable row. `enabled` controls only how it draws — full-strength
-    /// when it is reporting something live, muted when it is not.
-    private func infoItem(_ title: String, enabled: Bool) -> NSMenuItem {
-        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-        item.isEnabled = enabled
-        return item
     }
 
     private func actionItem(_ title: String, _ selector: Selector, key: String = "") -> NSMenuItem {
@@ -518,7 +489,12 @@ final class App: NSObject, NSApplicationDelegate {
 
     // MARK: - Menu selectors
 
-    @objc private func restartEngine() { recovery.restartNow() }
+    /// Kept open by `KeepOpenMenu`, so the row greys out once pressed rather
+    /// than inviting a second restart; the next menu shows how it went.
+    @objc private func restartEngine(_ sender: NSMenuItem) {
+        recovery.restartNow()
+        sender.isEnabled = false
+    }
 
     @objc private func grantTrust() {
         tap.requestTrust()
@@ -532,8 +508,7 @@ final class App: NSObject, NSApplicationDelegate {
         if !overlayPreference.isEnabled { hud.dismiss() }
     }
 
-    @objc private func pickIconStyle(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String, let style = IconStyle(rawValue: raw) else { return }
+    private func setIconStyle(_ style: IconStyle) {
         IconStyle.current = style
         lastIconKey = nil
         refreshIcon()

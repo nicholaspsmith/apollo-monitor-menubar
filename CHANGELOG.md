@@ -8,6 +8,12 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.18.0] - 2026-11-03
+
+- Settings move to a Preferences window: the menu now ends with **Preferences…** (⌘,) and **Quit Apollo Monitor**, with no Settings or Icon submenu. The **Apollo Monitor Preferences** window holds Start at Login, Show Volume Overlay and the menu-bar icon, shown as tiles drawn as they look in the bar. Esc or ⌘W closes it. Your existing choices carry over.
+- Clicking **Restart UA Mixer Engine** leaves the menu open and greys the item out once pressed. Only Preferences…, ⚠ Grant Accessibility… and Quit close the menu.
+- Rows you can't click, including the connection status line, now always draw grey.
+
 ## [1.17.0] - 2026-11-02
 
 - Holding modifier keys like ⌘⌥ now registers correctly for gestures without the fn key interfering.

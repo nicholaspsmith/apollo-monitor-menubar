@@ -6,7 +6,7 @@
 
 <p align="center"><img src="docs/animation.png" alt="Apollo blinking"></p>
 
-**Version 1.16.0** · [Changelog](https://github.com/nicholaspsmith/apollo-monitor-menubar/releases)
+**Version 1.18.0** · [Changelog](https://github.com/nicholaspsmith/apollo-monitor-menubar/releases)
 
 ![The Apollo Monitor menu](screenshots/menu.png)
 
@@ -26,24 +26,32 @@ Built on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) and
 │  Mute                          │
 │  Dim                           │
 ├────────────────────────────────┤
-│  Settings                    ▸ │
-│  Icon                        ▸ │
+│  Preferences…               ⌘, │
 │  Quit Apollo Monitor        ⌘Q │
-└────────────────────────────────┘
-
-Settings ▸
-┌────────────────────────────────┐
-│  Show Volume Overlay         ✓ │
-├────────────────────────────────┤
-│  Start at Login              ✓ │
-├────────────────────────────────┤
-│  Version X.Y.Z                 │
 └────────────────────────────────┘
 ```
 
-**Settings ▸** is StatusItemKit's shared `SettingsMenu`: the app's own
-preferences on top, then Start at Login, then the version. **Icon ▸** sits
-right below it in the main menu.
+Clicking an option (Mute, Dim, Restart UA Mixer Engine) applies it and leaves
+the menu open, its tick updated in place; only **Preferences…**, **⚠ Grant
+Accessibility…** and **Quit** close it. Rows you cannot click (the status
+line, recovery notes) draw grey.
+
+**Preferences…** (⌘,) opens the **Apollo Monitor Preferences** window, the
+same window as every Menumon app's (StatusItemKit's shared `PreferencesPane`;
+Esc or ⌘W closes it):
+
+```
+┌─ Apollo Monitor Preferences ───────────┐
+│ General                                │
+│   Start at Login                  [on] │
+│ Volume Overlay                         │
+│   Show Volume Overlay             [on] │
+│ Menu Bar Icon                          │
+│   [Apollo]  [Arc]                      │
+│                                        │
+│            Version X.Y.Z               │
+└────────────────────────────────────────┘
+```
 
 When relevant the menu also shows [engine recovery](#engine-recovery) status
 and **Restart UA Mixer Engine**, **⚠ Grant Accessibility…**, or "Volume keys:
@@ -69,8 +77,8 @@ Daddy), Carol (SoundChain), Iguanamous (VPN & DNS), Armonitor (Panes),
 Volta (Battery Time), then Apollo, counting only the ones that are running.
 Skipped when Reduce Motion is on.
 
-**Icon ▸ Arc** shows a green level arc instead; **Icon ▸ Apollo** restores the
-face. Both are full-colour images, not templates, so they keep their colour
+**Preferences… ▸ Menu Bar Icon ▸ Arc** shows a green level arc instead;
+**Apollo** restores the face. Each choice is drawn as it looks in the bar. Both are full-colour images, not templates, so they keep their colour
 when the menu opens.
 
 ## Why this exists
@@ -117,7 +125,7 @@ Run the tests with `swift test`.
 |---|---|
 | **Volume up / down keys** | Monitor level ±1 dB per press; a held key accelerates |
 | **Mute key** | Mutes and unmutes the monitor output |
-| Click the icon | Slider, Mute, Dim, [engine recovery](#engine-recovery) when needed; **Settings ▸** holds the overlay switch and Start at Login; **Icon ▸** sits below it |
+| Click the icon | Slider, Mute, Dim, [engine recovery](#engine-recovery) when needed; **Preferences…** (⌘,) holds Start at Login, the overlay switch and the icon |
 | `ApolloMonitor --step up\|down` | Adjust once and exit; needs no Accessibility |
 | `ApolloMonitor --login on\|off\|status` | Start at Login from the shell (what `install.sh` runs when you say yes) |
 
@@ -153,7 +161,7 @@ name, a level bar and the exact dB. It is a non-activating borderless panel
 that ignores the mouse and fades after 1.4 s.
 
 It follows the *level*, not the keypress, so turning the hardware knob or
-Console's fader shows it too. Dragging the menu slider does not. **Settings ▸ Show
+Console's fader shows it too. Dragging the menu slider does not. **Preferences… ▸ Show
 Volume Overlay** turns it off and on; the choice persists.
 
 The panel is rebuilt on wake, on screen-configuration changes, and after five
@@ -327,7 +335,7 @@ Versions obtained before 2026-09-20 were MIT-licensed and keep those terms.
 
 Part of a suite of macOS menu-bar apps that share one framework, one
 build-and-sign script, and one installer. They are designed to sit in the
-same bar together: consistent menus, a common **Icon** picker, and cooperative
+same bar together: consistent menus, one shared **Preferences** window, and cooperative
 hiding so no icon strands another.
 
 | App | What it does |
@@ -346,7 +354,7 @@ hiding so no icon strands another.
 
 | Framework | |
 |---|---|
-| [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) | Status-item lifecycle, polling, menus, meter and mascot icons, the shared Icon picker |
+| [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) | Status-item lifecycle, polling, menus, meter and mascot icons, the shared Preferences window and menu rows |
 | [HotkeyKit](https://github.com/nicholaspsmith/HotkeyKit) | CGEventTap engine for intercepting and remapping global keys |
 
 Install the whole suite on a fresh Mac with
