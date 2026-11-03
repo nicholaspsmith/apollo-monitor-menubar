@@ -10,10 +10,11 @@ Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 
 ## [1.19.0] - 2026-11-03
 
-- Keep-open menu rows with a status dot are no longer clipped at the end, ensuring the full title and image are visible.
-- The Settings submenu has been replaced by a standard Preferences window (⌘,) featuring grouped options, a login toggle, and an icon picker.
-- Menus now stay open when selecting options (except for Quit and "…" items), and new collapsible section headings allow you to hide or show groups of menu items.
-- Read-only information rows in the menu now consistently appear in grey text, even when added dynamically while the menu is open.
+- The status dot in keep-open menu rows now aligns with other items instead of being pushed to the right.
+- Long keep-open menu rows with status dots are no longer clipped at the end.
+- The Settings submenu has been replaced by a standard Preferences window (⌘,) featuring grouped settings, a start-at-login toggle, and an icon picker.
+- Menus now stay open when selecting options (except for Quit and "…" items), and new collapsible section headings allow you to fold away groups of menu rows.
+- Read-only information rows in the menu now always appear in grey text, even when added while the menu is open.
 
 ## [1.18.0] - 2026-11-03
 
