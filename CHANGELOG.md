@@ -8,6 +8,11 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.19.2] - 2026-11-03
+
+- Updated StatusItemKit to 0.38.4
+- A folding menu section with read-only rows (Battery Stats) no longer widens the menu when it opens. The menu starts just wide enough for the section's longest line, so its width stays the same whether the section is open or folded.
+
 ## [1.19.1] - 2026-11-03
 
 - Updated StatusItemKit to 0.38.3
