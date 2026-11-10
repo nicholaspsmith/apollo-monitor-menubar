@@ -8,6 +8,12 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.20.0] - 2026-11-10
+
+- Updated StatusItemKit to 0.39.0
+- New `MeterColor.healthAdaptive` (and `healthOnDark`): the usage ramp for a menu's bars and text. It is bright on a dark menu and deep on a light one, so it reads on both.
+- The owl's pupils stand out from his eyes at every usage. The green-to-red ramp is now a brighter green (`#00860B`) deepening through orange to a strong red (`#A50000`), in place of a light orange-red that washed out against a tired, pink eye.
+
 ## [1.19.2] - 2026-11-03
 
 - Updated StatusItemKit to 0.38.4
